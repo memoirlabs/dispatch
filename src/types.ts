@@ -84,4 +84,6 @@ export type DispatchContext = {
   packageJson: PackageJson;
   packageManager: PackageManager;
   config: DispatchConfig;
+  verbose?: boolean;
+  quiet?: boolean;
 };

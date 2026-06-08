@@ -48,15 +48,21 @@ export function resolveScriptName(packageJson: PackageJson, names: string[]): st
 export function detectPackageManager(repoRoot: string, packageJson: PackageJson): PackageManager {
   const declared = packageJson.packageManager?.split("@")[0];
   if (declared === "bun" || declared === "pnpm" || declared === "npm" || declared === "yarn") {
+    assertLockfileMatchesPackageManager(repoRoot, declared);
     return declared;
   }
 
-  if (existsSync(join(repoRoot, "bun.lock")) || existsSync(join(repoRoot, "bun.lockb"))) return "bun";
-  if (existsSync(join(repoRoot, "pnpm-lock.yaml"))) return "pnpm";
-  if (existsSync(join(repoRoot, "yarn.lock"))) return "yarn";
-  if (existsSync(join(repoRoot, "package-lock.json")) || existsSync(join(repoRoot, "npm-shrinkwrap.json"))) return "npm";
+  const detected = detectedLockfileManagers(repoRoot);
+  if (detected.length > 1) {
+    throw new Error(`Multiple package manager lockfiles found: ${detected.join(", ")}. Set packageManager in package.json or remove stale lockfiles.`);
+  }
 
-  return "bun";
+  if (existsSync(join(repoRoot, "pnpm-lock.yaml"))) return "pnpm";
+  if (existsSync(join(repoRoot, "package-lock.json")) || existsSync(join(repoRoot, "npm-shrinkwrap.json"))) return "npm";
+  if (existsSync(join(repoRoot, "yarn.lock"))) return "yarn";
+  if (existsSync(join(repoRoot, "bun.lock")) || existsSync(join(repoRoot, "bun.lockb"))) return "bun";
+
+  return "npm";
 }
 
 export function runPackageScript(packageManager: PackageManager, script: string, args: string[] = []): string[] {
@@ -185,4 +191,20 @@ function hasAnyDependencies(packageJson: PackageJson): boolean {
 
 function withRunSeparator(args: string[]): string[] {
   return args.length ? ["--", ...args] : [];
+}
+
+function detectedLockfileManagers(repoRoot: string): PackageManager[] {
+  const managers: PackageManager[] = [];
+  if (existsSync(join(repoRoot, "pnpm-lock.yaml"))) managers.push("pnpm");
+  if (existsSync(join(repoRoot, "package-lock.json")) || existsSync(join(repoRoot, "npm-shrinkwrap.json"))) managers.push("npm");
+  if (existsSync(join(repoRoot, "yarn.lock"))) managers.push("yarn");
+  if (existsSync(join(repoRoot, "bun.lock")) || existsSync(join(repoRoot, "bun.lockb"))) managers.push("bun");
+  return managers;
+}
+
+function assertLockfileMatchesPackageManager(repoRoot: string, declared: PackageManager): void {
+  const managers = detectedLockfileManagers(repoRoot);
+  if (!managers.length || managers.includes(declared)) return;
+
+  throw new Error(`packageManager declares ${declared}, but found ${managers.join(", ")} lockfile. Align packageManager with the lockfile or remove stale lockfiles.`);
 }
