@@ -7,10 +7,12 @@ import { devCommand } from "./commands/dev.ts";
 import { doctorCommand } from "./commands/doctor.ts";
 import { fixCommand } from "./commands/fix.ts";
 import { installDispatchCommand } from "./commands/install.ts";
+import { initCommand } from "./commands/init.ts";
 import { lintCommand } from "./commands/lint.ts";
 import { menuCommand } from "./commands/menu.ts";
 import { opsCommand } from "./commands/ops.ts";
 import { portCommand } from "./commands/port.ts";
+import { processesCommand } from "./commands/processes.ts";
 import { prepareCommand } from "./commands/prepare.ts";
 import { previewCommand } from "./commands/preview.ts";
 import { releaseCommand } from "./commands/release.ts";
@@ -22,6 +24,7 @@ import { typecheckCommand } from "./commands/typecheck.ts";
 import { updateCommand } from "./commands/update.ts";
 import { verifyCommand } from "./commands/verify.ts";
 import { runPackageScript } from "./project.ts";
+import { isManagedScript } from "./standard.ts";
 import type { Category, DispatchCommand, DispatchContext, ResolvedCommand } from "./types.ts";
 
 const CATEGORIES: Category[] = ["core", "repo", "quality", "deploy", "ops", "debug"];
@@ -31,10 +34,12 @@ export const commands: DispatchCommand[] = [
   startCommand,
   previewCommand,
   menuCommand,
+  initCommand,
   installDispatchCommand,
   updateCommand,
   syncCommand,
   portCommand,
+  processesCommand,
   cleanCommand,
   doctorCommand,
   lintCommand,
@@ -84,7 +89,8 @@ export function printCommandList(): void {
 export function fallbackPackageScript(context: DispatchContext, name: string, args: string[]): ResolvedCommand | null {
   const alias = context.config.aliases?.[name];
   const target = alias ?? name;
-  if (context.packageJson.scripts?.[target]) {
+  const script = context.packageJson.scripts?.[target];
+  if (script && !isManagedScript(script, target)) {
     return { cmd: runPackageScript(context.packageManager, target, args), cwd: context.repoRoot };
   }
   return null;

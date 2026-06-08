@@ -5,8 +5,8 @@ import { customOrScript } from "./shared.ts";
 export const syncCommand: DispatchCommand = {
   name: "sync",
   category: "repo",
-  summary: "Sync the repo. Uses project sync script when present, otherwise pull/rebase or --hard reset.",
-  examples: ["dispatch sync", "dispatch sync --hard", "dispatch sync --dry-run"],
+  summary: "Force the worktree to match origin/main and discard local changes.",
+  examples: ["dispatch sync", "dispatch sync --dry-run", "dispatch sync --branch release"],
   run: async (context, args) => {
     const forcedBuiltin = args.includes("--builtin");
     const forwarded = args.filter((arg) => arg !== "--builtin");

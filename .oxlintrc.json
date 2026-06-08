@@ -1,0 +1,88 @@
+{
+  "$schema": "./oxlint/configuration_schema.json",
+  "extends": [
+    "./oxlint/base.json"
+  ],
+  "ignorePatterns": [
+    "node_modules/**",
+    "dist/**",
+    "build/**",
+    "coverage/**",
+    ".turbo/**",
+    ".next/**",
+    ".nuxt/**",
+    ".svelte-kit/**",
+    ".output/**",
+    ".vite/**",
+    ".cache/**",
+    "storybook-static/**",
+    "*.min.*",
+    "**/*.generated.*",
+    "**/generated/**"
+  ],
+  "options": {
+    "reportUnusedDisableDirectives": "warn",
+    "respectEslintDisableDirectives": true
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/*.test.js",
+        "**/*.test.jsx",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.js",
+        "**/*.spec.jsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/__tests__/**/*.js",
+        "**/__tests__/**/*.jsx",
+        "**/__tests__/**/*.ts",
+        "**/__tests__/**/*.tsx"
+      ],
+      "env": {
+        "jest": true,
+        "vitest": true,
+        "node": true
+      }
+    },
+    {
+      "files": [
+        "*.config.js",
+        "*.config.ts",
+        "*.config.mjs",
+        "*.config.cjs",
+        "*.config.mts",
+        "*.config.cts",
+        "**/*.config.js",
+        "**/*.config.ts",
+        "**/*.config.mjs",
+        "**/*.config.cjs",
+        "**/*.config.mts",
+        "**/*.config.cts",
+        "scripts/**/*.js",
+        "scripts/**/*.ts",
+        "scripts/**/*.mjs",
+        "scripts/**/*.cjs",
+        "scripts/**/*.mts",
+        "scripts/**/*.cts"
+      ],
+      "env": {
+        "node": true
+      },
+      "rules": {
+        "no-console": "off"
+      }
+    },
+    {
+      "files": [
+        "**/*.cjs",
+        "**/*.cts"
+      ],
+      "env": {
+        "commonjs": true,
+        "node": true
+      }
+    }
+  ]
+}

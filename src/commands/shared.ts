@@ -1,5 +1,6 @@
 import { normalizeCommand } from "../config.ts";
 import { execToolCommand, isTurboRepo, resolveScriptName, runPackageScript } from "../project.ts";
+import { isManagedScript } from "../standard.ts";
 import type { DispatchContext, ResolvedCommand } from "../types.ts";
 
 export function customOrScript(context: DispatchContext, args: string[], commandName: string, scriptNames: string[], fallback?: ResolvedCommand): ResolvedCommand | void {
@@ -8,7 +9,9 @@ export function customOrScript(context: DispatchContext, args: string[], command
 
   const configuredAliases = context.config.scriptAliases?.[commandName] ?? [];
   const script = resolveScriptName(context.packageJson, [...configuredAliases, ...scriptNames]);
-  if (script) return { cmd: runPackageScript(context.packageManager, script, args), cwd: context.repoRoot };
+  if (script && !isManagedScript(context.packageJson.scripts?.[script] ?? "", script)) {
+    return { cmd: runPackageScript(context.packageManager, script, args), cwd: context.repoRoot };
+  }
 
   return fallback;
 }

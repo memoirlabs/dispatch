@@ -1,18 +1,12 @@
 {
   "scripts": {
-    "dev": "dispatch dev",
-    "port": "dispatch port",
-    "portclean": "dispatch port",
-    "sync": "dispatch sync",
-    "update": "dispatch update",
-    "update-all": "dispatch update",
     "check": "dispatch check",
-    "ci": "dispatch ci",
-    "build": "dispatch build",
+    "lint": "dispatch lint",
+    "typecheck": "dispatch typecheck",
     "test": "dispatch test",
-    "deploy": "dispatch deploy",
-    "dp": "dispatch deploy",
-    "ops": "dispatch ops"
+    "build": "dispatch build",
+    "clean": "dispatch clean",
+    "ps": "dispatch ps"
   },
   "devDependencies": {
     "@memoir/dispatch": "workspace:*"

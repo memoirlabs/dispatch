@@ -49,7 +49,6 @@ export type DispatchConfig = {
   ports?: number[];
   appFilter?: string;
   deployScript?: string;
-  syncMode?: "pull" | "hard";
   commandDir?: string;
   commands?: Record<string, string | string[]>;
   aliases?: Record<string, string>;

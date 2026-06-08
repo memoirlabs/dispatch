@@ -4,7 +4,7 @@ import { customOrScript } from "./shared.ts";
 
 export const updateCommand: DispatchCommand = {
   name: "update",
-  aliases: ["update-all", "up"],
+  aliases: ["update-all"],
   category: "repo",
   summary: "Update dependencies. Uses project update script when present, otherwise updates all workspaces.",
   run: async (context, args) => {

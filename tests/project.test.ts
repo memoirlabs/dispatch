@@ -10,6 +10,7 @@ import {
   runPackageScript,
   updateLatestCommand,
 } from "../src/project.ts";
+import { parseLsofCwds, parseLsofNamesByPid, parseProcessLine } from "../src/processes.ts";
 
 const tmpRoot = join(import.meta.dir, ".tmp");
 
@@ -20,9 +21,17 @@ afterAll(async () => {
 test("detectPackageManager prefers packageManager over lockfiles", async () => {
   const root = join(tmpRoot, "declared");
   await mkdir(root, { recursive: true });
-  await writeFile(join(root, "bun.lock"), "");
+  await writeFile(join(root, "pnpm-lock.yaml"), "");
 
   expect(detectPackageManager(root, { packageManager: "pnpm@9.0.0" })).toBe("pnpm");
+});
+
+test("detectPackageManager rejects packageManager and lockfile conflicts", async () => {
+  const root = join(tmpRoot, "conflict");
+  await mkdir(root, { recursive: true });
+  await writeFile(join(root, "bun.lock"), "");
+
+  expect(() => detectPackageManager(root, { packageManager: "pnpm@9.0.0" })).toThrow("packageManager declares pnpm");
 });
 
 test("detectPackageManager falls back through common lockfiles", async () => {
@@ -49,4 +58,26 @@ test("package manager helpers build install update exec and dlx commands", () =>
   expect(updateLatestCommand("bun", ["--dry-run"])).toEqual(["bun", "update", "--latest", "--dry-run"]);
   expect(execToolCommand("npm", "turbo", ["run", "build"])).toEqual(["npx", "turbo", "run", "build"]);
   expect(dlxToolCommand("pnpm", "vercel", ["deploy"])).toEqual(["pnpm", "dlx", "vercel", "deploy"]);
+});
+
+test("parseProcessLine reads ps rows", () => {
+  expect(parseProcessLine("123 1 123 S 01:02 0.0 0.1 python scripts/worker.py")).toMatchObject({
+    pid: 123,
+    ppid: 1,
+    pgid: 123,
+    stat: "S",
+    etime: "01:02",
+    command: "python scripts/worker.py",
+  });
+});
+
+test("parseLsofCwds maps cwd records by pid", () => {
+  const cwd = parseLsofCwds(["p123", "cpython", "fcwd", "n/tmp/repo", "p456", "fmem", "n/nope"].join("\n"));
+  expect(cwd.get(123)).toBe("/tmp/repo");
+  expect(cwd.has(456)).toBe(false);
+});
+
+test("parseLsofNamesByPid maps names by pid", () => {
+  const names = parseLsofNamesByPid(["p123", "nTCP *:3000 (LISTEN)", "nTCP 127.0.0.1:5173 (LISTEN)"].join("\n"));
+  expect(names.get(123)).toEqual(["TCP *:3000 (LISTEN)", "TCP 127.0.0.1:5173 (LISTEN)"]);
 });

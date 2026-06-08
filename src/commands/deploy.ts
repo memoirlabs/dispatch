@@ -4,7 +4,7 @@ import { customOrScript } from "./shared.ts";
 
 export const deployCommand: DispatchCommand = {
   name: "deploy",
-  aliases: ["dp", "ship"],
+  aliases: ["dp"],
   category: "deploy",
   summary: "Deploy using project deploy script, configured script, or Vercel fallback.",
   run: (context, args) => {

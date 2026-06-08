@@ -4,7 +4,7 @@ import { customOrScript } from "./shared.ts";
 
 export const portCommand: DispatchCommand = {
   name: "port",
-  aliases: ["ports", "portclean", "pc"],
+  aliases: ["ports", "portclean"],
   category: "repo",
   summary: "Clean common local dev ports and stale Next dev locks.",
   examples: ["dispatch port", "dispatch port --ports 3000,5173", "dispatch port --dry-run"],

@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 
-import { collectWorkspacePackages, detectPackageManager, installCommand, isTurboRepo, updateLatestCommand } from "./project.ts";
+import { collectWorkspacePackages, detectPackageManager, isTurboRepo, updateLatestCommand } from "./project.ts";
 import { commandExists, formatCommand, runCapture, runResolved } from "./run.ts";
 import type { DispatchContext } from "./types.ts";
 
@@ -55,21 +55,13 @@ export async function cleanPorts(context: DispatchContext, args: string[]): Prom
 }
 
 export async function syncRepo(context: DispatchContext, args: string[]): Promise<void> {
-  const hard = args.includes("--hard") || context.config.syncMode === "hard";
   const dryRun = args.includes("--dry-run");
-
-  const branchResult = await runCapture(["git", "branch", "--show-current"], context.repoRoot);
-  const branch = branchResult.stdout.trim() || "main";
-  const commands = hard
-    ? [
-      ["git", "fetch", "origin"],
-      ["git", "reset", "--hard", `origin/${branch}`],
-      ["git", "clean", "-fd"],
-    ]
-    : [
-      ["git", "pull", "--rebase", "--autostash"],
-      installCommand(context.packageManager),
-    ];
+  const branch = syncTargetBranch(args);
+  const commands = [
+    ["git", "fetch", "origin"],
+    ["git", "reset", "--hard", `origin/${branch}`],
+    ["git", "clean", "-fd"],
+  ];
 
   for (const cmd of commands) {
     if (dryRun) {
@@ -80,6 +72,15 @@ export async function syncRepo(context: DispatchContext, args: string[]): Promis
     const exitCode = await runResolved({ cmd, cwd: context.repoRoot });
     if (exitCode !== 0) process.exit(exitCode);
   }
+}
+
+function syncTargetBranch(args: string[]): string {
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--branch") return args[index + 1] ?? "main";
+    if (arg.startsWith("--branch=")) return arg.slice("--branch=".length) || "main";
+  }
+  return "main";
 }
 
 export async function updateAll(context: DispatchContext, args: string[]): Promise<void> {

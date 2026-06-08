@@ -4,7 +4,7 @@
   "binaries": ["dispatch", "dx"],
   "categories": {
     "core": ["dev", "start", "preview", "menu"],
-    "repo": ["install", "update", "sync", "port", "clean", "doctor"],
+    "repo": ["init", "install", "update", "sync", "port", "processes", "clean", "doctor"],
     "quality": ["lint", "fix", "typecheck", "test", "check", "ci", "build", "verify", "prepare"],
     "deploy": ["deploy", "release"],
     "ops": ["ops"],
@@ -16,6 +16,8 @@
     "up": "update",
     "portclean": "port",
     "pc": "port",
+    "ps": "processes",
+    "proc": "processes",
     "tc": "typecheck",
     "t": "test",
     "b": "build",
