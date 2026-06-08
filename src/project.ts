@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 
-import type { PackageJson, WorkspacePackage } from "./types.ts";
+import type { PackageManager, PackageJson, WorkspacePackage } from "./types.ts";
 
 export async function readPackageJson(directory: string): Promise<PackageJson | null> {
   const path = join(directory, "package.json");
@@ -45,8 +45,83 @@ export function resolveScriptName(packageJson: PackageJson, names: string[]): st
   return null;
 }
 
-export function bunRunScript(script: string, args: string[] = []): string[] {
-  return ["bun", "run", script, ...args];
+export function detectPackageManager(repoRoot: string, packageJson: PackageJson): PackageManager {
+  const declared = packageJson.packageManager?.split("@")[0];
+  if (declared === "bun" || declared === "pnpm" || declared === "npm" || declared === "yarn") {
+    return declared;
+  }
+
+  if (existsSync(join(repoRoot, "bun.lock")) || existsSync(join(repoRoot, "bun.lockb"))) return "bun";
+  if (existsSync(join(repoRoot, "pnpm-lock.yaml"))) return "pnpm";
+  if (existsSync(join(repoRoot, "yarn.lock"))) return "yarn";
+  if (existsSync(join(repoRoot, "package-lock.json")) || existsSync(join(repoRoot, "npm-shrinkwrap.json"))) return "npm";
+
+  return "bun";
+}
+
+export function runPackageScript(packageManager: PackageManager, script: string, args: string[] = []): string[] {
+  switch (packageManager) {
+    case "npm":
+      return ["npm", "run", script, ...withRunSeparator(args)];
+    case "pnpm":
+      return ["pnpm", "run", script, ...withRunSeparator(args)];
+    case "yarn":
+      return ["yarn", "run", script, ...args];
+    case "bun":
+      return ["bun", "run", script, ...args];
+  }
+}
+
+export function installCommand(packageManager: PackageManager, args: string[] = []): string[] {
+  switch (packageManager) {
+    case "npm":
+      return ["npm", "install", ...args];
+    case "pnpm":
+      return ["pnpm", "install", ...args];
+    case "yarn":
+      return ["yarn", "install", ...args];
+    case "bun":
+      return ["bun", "install", ...args];
+  }
+}
+
+export function updateLatestCommand(packageManager: PackageManager, args: string[] = []): string[] {
+  switch (packageManager) {
+    case "npm":
+      return ["npm", "update", ...args];
+    case "pnpm":
+      return ["pnpm", "update", "--latest", ...args];
+    case "yarn":
+      return ["yarn", "up", ...args];
+    case "bun":
+      return ["bun", "update", "--latest", ...args];
+  }
+}
+
+export function execToolCommand(packageManager: PackageManager, tool: string, args: string[] = []): string[] {
+  switch (packageManager) {
+    case "npm":
+      return ["npx", tool, ...args];
+    case "pnpm":
+      return ["pnpm", "exec", tool, ...args];
+    case "yarn":
+      return ["yarn", tool, ...args];
+    case "bun":
+      return ["bunx", "--bun", tool, ...args];
+  }
+}
+
+export function dlxToolCommand(packageManager: PackageManager, tool: string, args: string[] = []): string[] {
+  switch (packageManager) {
+    case "npm":
+      return ["npx", tool, ...args];
+    case "pnpm":
+      return ["pnpm", "dlx", tool, ...args];
+    case "yarn":
+      return ["yarn", "dlx", tool, ...args];
+    case "bun":
+      return ["bunx", "--bun", tool, ...args];
+  }
 }
 
 export function isTurboRepo(packageJson: PackageJson): boolean {
@@ -106,4 +181,8 @@ function hasAnyDependencies(packageJson: PackageJson): boolean {
     packageJson.optionalDependencies,
     packageJson.peerDependencies,
   ].some((deps) => deps && Object.keys(deps).length > 0);
+}
+
+function withRunSeparator(args: string[]): string[] {
+  return args.length ? ["--", ...args] : [];
 }

@@ -4,6 +4,7 @@ const config: DispatchConfig = {
   name: "my-project",
   ports: [3000, 3001, 5173, 8080, 8787],
   appFilter: "@my-scope/web-app",
+  commandDir: ".dispatch/commands",
   deployScript: "deploy",
   syncMode: "pull",
   aliases: {
@@ -16,8 +17,8 @@ const config: DispatchConfig = {
   },
   commands: {
     // Override any dispatch command with a shell string or argv array.
-    // dev: ["bunx", "--bun", "turbo", "run", "dev", "--filter=@my-scope/web-app"],
-    // deploy: "bun run ci && bunx --bun vercel deploy --prod",
+    // dev: ["pnpm", "exec", "turbo", "run", "dev", "--filter=@my-scope/web-app"],
+    // deploy: "pnpm run ci && pnpm dlx vercel deploy --prod",
   },
 };
 

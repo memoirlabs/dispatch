@@ -2,7 +2,8 @@
 
 import { buildCommandMap, fallbackPackageScript, printCommandList } from "./commands.ts";
 import { loadConfig } from "./config.ts";
-import { findProjectRoot, readPackageJson } from "./project.ts";
+import { resolveConfigCommand, resolveLocalCommand } from "./local-commands.ts";
+import { detectPackageManager, findProjectRoot, readPackageJson } from "./project.ts";
 import { formatCommand, runResolved } from "./run.ts";
 import type { DispatchContext } from "./types.ts";
 
@@ -32,14 +33,19 @@ async function main(): Promise<void> {
     startCwd: process.cwd(),
     repoRoot,
     packageJson,
+    packageManager: detectPackageManager(repoRoot, packageJson),
     config: await loadConfig(repoRoot),
   };
 
   const map = buildCommandMap();
   const command = map.get(name);
-  const resolved = command
-    ? await command.run(context, args)
-    : fallbackPackageScript(context, name, args);
+  const canonicalName = command?.name ?? name;
+  const resolved =
+    await resolveConfigCommand(context, name, args) ??
+    await resolveLocalCommand(context, name, args) ??
+    (canonicalName === name ? null : await resolveConfigCommand(context, canonicalName, args)) ??
+    (canonicalName === name ? null : await resolveLocalCommand(context, canonicalName, args)) ??
+    (command ? await command.run(context, args) : fallbackPackageScript(context, name, args));
 
   if (!resolved) {
     if (!command) {

@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 
-import { collectWorkspacePackages, isTurboRepo } from "./project.ts";
+import { collectWorkspacePackages, detectPackageManager, installCommand, isTurboRepo, updateLatestCommand } from "./project.ts";
 import { commandExists, formatCommand, runCapture, runResolved } from "./run.ts";
 import type { DispatchContext } from "./types.ts";
 
@@ -68,7 +68,7 @@ export async function syncRepo(context: DispatchContext, args: string[]): Promis
     ]
     : [
       ["git", "pull", "--rebase", "--autostash"],
-      ["bun", "install"],
+      installCommand(context.packageManager),
     ];
 
   for (const cmd of commands) {
@@ -94,7 +94,8 @@ export async function updateAll(context: DispatchContext, args: string[]): Promi
   }
 
   for (const workspace of packages) {
-    const cmd = ["bun", "update", "--latest", ...forwarded];
+    const childPackageManager = detectPackageManager(workspace.root, workspace.packageJson);
+    const cmd = updateLatestCommand(childPackageManager, forwarded);
     console.log(`\n==> ${workspace.relativePath}`);
     if (dryRun) {
       console.log(`[dry-run] ${formatCommand(cmd)}`);
@@ -134,6 +135,7 @@ export async function doctor(context: DispatchContext): Promise<void> {
   console.log(`root:    ${context.repoRoot}`);
   console.log(`bun:     ${Bun.version}`);
   console.log(`pm:      ${context.packageJson.packageManager ?? "(none)"}`);
+  console.log(`runner:  ${context.packageManager}`);
   console.log(`turbo:   ${isTurboRepo(context.packageJson) ? "yes" : "no"}`);
   console.log(`git:     ${await commandExists("git", context.repoRoot) ? "yes" : "no"}`);
   console.log(`scripts: ${Object.keys(context.packageJson.scripts ?? {}).length}`);

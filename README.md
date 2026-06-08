@@ -1,6 +1,6 @@
 # Dispatch
 
-Tiny Bun-only command dispatcher for the repeated project commands you keep copying between repos.
+Tiny Bun-powered command dispatcher for the repeated project commands you keep copying between repos.
 
 It exposes two binaries:
 
@@ -15,7 +15,9 @@ The package is intentionally small:
 - no yargs
 - no runtime dependencies
 - Bun TypeScript directly through `#!/usr/bin/env bun`
+- project scripts run through the package manager the repo already uses: Bun, pnpm, npm, or Yarn
 - project-local scripts are preferred when they exist
+- project-local command files let a repo define one file per repeated workflow
 - fast built-ins cover the repeated stuff: ports, sync, update all workspaces, clean, doctor
 
 ## Why this exists
@@ -124,11 +126,65 @@ dispatch ci
 Resolution:
 
 1. `dispatch.config.ts` override for `ci`
-2. current repo's `package.json` script named `ci`
-3. Turbo `ci` task if the repo uses Turbo
-4. error if none exists
+2. `.dispatch/commands/ci.ts` or `dispatch/ci.ts` project-local command file
+3. current repo's `package.json` script named `ci`
+4. Turbo `ci` task if the repo uses Turbo
+5. error if none exists
 
 So it adapts cleanly to Memoir, NiceJewish, TrenchClaw, Liq, Pump Kit, landing apps, and smaller single-package projects.
+
+## Command Files
+
+For project-specific workflows, prefer one file per command:
+
+```txt
+.dispatch/commands/dev.ts
+.dispatch/commands/seed.ts
+.dispatch/commands/release.ts
+```
+
+Command files can export a command string, argv array, function, or object:
+
+```ts
+import type { DispatchContext } from "@memoir/dispatch";
+
+export default {
+  summary: "Seed local data.",
+  run: (_context: DispatchContext, args: string[]) => ({
+    cmd: ["bun", "run", "scripts/seed.ts", ...args],
+  }),
+};
+```
+
+Simple commands can be just:
+
+```ts
+export default "pnpm run db:migrate";
+```
+
+Supported locations, in lookup order:
+
+```txt
+.dispatch/commands/<name>.ts
+.dispatch/<name>.ts
+dispatch/commands/<name>.ts
+dispatch/<name>.ts
+```
+
+Set a custom first lookup directory with `commandDir` in `dispatch.config.ts`.
+
+## Package Managers
+
+Dispatch itself runs on Bun, but project commands are package-manager aware. It detects the runner from `packageManager` first, then lockfiles:
+
+```txt
+bun.lock / bun.lockb -> bun
+pnpm-lock.yaml       -> pnpm
+yarn.lock            -> yarn
+package-lock.json    -> npm
+```
+
+That means `dispatch check` runs `pnpm run check` in a pnpm repo, `npm run check` in an npm repo, and so on.
 
 ## Built-ins
 
@@ -219,6 +275,7 @@ import type { DispatchConfig } from "@memoir/dispatch";
 const config: DispatchConfig = {
   ports: [3000, 3001, 5173],
   appFilter: "@memoir/full-stack-next-app",
+  commandDir: ".dispatch/commands",
   deployScript: "deploy:prod",
   syncMode: "pull",
   scriptAliases: {
@@ -227,7 +284,7 @@ const config: DispatchConfig = {
   },
   commands: {
     // full override
-    // dev: ["bunx", "--bun", "turbo", "run", "dev", "--filter=@memoir/full-stack-next-app"]
+    // dev: ["pnpm", "exec", "turbo", "run", "dev", "--filter=@memoir/full-stack-next-app"]
   }
 };
 

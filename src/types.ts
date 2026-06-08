@@ -23,6 +23,18 @@ export type DispatchCommand = {
 
 export type CommandResolver = (context: DispatchContext, args: string[]) => Promise<ResolvedCommand | void> | ResolvedCommand | void;
 
+export type CommandResult = ResolvedCommand | string | string[] | void;
+
+export type ProjectCommand =
+  | string
+  | string[]
+  | {
+    summary?: string;
+    run?: (context: DispatchContext, args: string[]) => Promise<CommandResult> | CommandResult;
+    command?: string | string[];
+  }
+  | ((context: DispatchContext, args: string[]) => Promise<CommandResult> | CommandResult);
+
 export type ResolvedCommand = {
   cmd: string[];
   cwd?: string;
@@ -38,10 +50,13 @@ export type DispatchConfig = {
   appFilter?: string;
   deployScript?: string;
   syncMode?: "pull" | "hard";
+  commandDir?: string;
   commands?: Record<string, string | string[]>;
   aliases?: Record<string, string>;
   scriptAliases?: Record<string, string[]>;
 };
+
+export type PackageManager = "bun" | "pnpm" | "npm" | "yarn";
 
 export type PackageJson = {
   name?: string;
@@ -67,5 +82,6 @@ export type DispatchContext = {
   startCwd: string;
   repoRoot: string;
   packageJson: PackageJson;
+  packageManager: PackageManager;
   config: DispatchConfig;
 };

@@ -1,7 +1,7 @@
 {
   "name": "@memoir/dispatch",
   "version": "0.1.0",
-  "description": "Tiny Bun-only command dispatcher for project scripts, CI, deploys, syncs, and local dev utilities.",
+  "description": "Tiny Bun-powered command dispatcher for project scripts, CI, deploys, syncs, and local dev utilities.",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -27,8 +27,9 @@
     "dev": "bun run src/cli.ts",
     "list": "bun run src/cli.ts list",
     "check": "bun --bun tsc --noEmit --project tsconfig.json",
+    "test": "bun test",
     "build:binary": "bun build --compile --outfile dist/dispatch ./src/cli.ts",
-    "ci": "bun run check"
+    "ci": "bun run check && bun run test"
   },
   "devDependencies": {
     "@types/bun": "^1.3.14",
