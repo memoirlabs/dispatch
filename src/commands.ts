@@ -2,6 +2,7 @@ import { buildCommand } from "./commands/build.ts";
 import { checkCommand } from "./commands/check.ts";
 import { ciCommand } from "./commands/ci.ts";
 import { cleanCommand } from "./commands/clean.ts";
+import { convexCommand } from "./commands/convex.ts";
 import { deployCommand } from "./commands/deploy.ts";
 import { devCommand } from "./commands/dev.ts";
 import { doctorCommand } from "./commands/doctor.ts";
@@ -41,6 +42,7 @@ export const commands: DispatchCommand[] = [
   portCommand,
   processesCommand,
   cleanCommand,
+  convexCommand,
   doctorCommand,
   lintCommand,
   fixCommand,
@@ -71,7 +73,6 @@ export function printCommandList(): void {
   console.log("");
   console.log("Usage:");
   console.log("  dispatch <command> [...args]");
-  console.log("  dx <command> [...args]");
   console.log("");
 
   for (const category of CATEGORIES) {

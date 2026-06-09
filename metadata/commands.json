@@ -1,17 +1,16 @@
 {
   "package": "@memoir/dispatch",
   "version": "0.1.0",
-  "binaries": ["dispatch", "dx"],
+  "binaries": ["dispatch"],
   "categories": {
     "core": ["dev", "start", "preview", "menu"],
-    "repo": ["init", "install", "update", "sync", "port", "processes", "clean", "doctor"],
+    "repo": ["init", "install", "update", "sync", "port", "processes", "clean", "convex", "doctor"],
     "quality": ["lint", "fix", "typecheck", "test", "check", "ci", "build", "verify", "prepare"],
     "deploy": ["deploy", "release"],
     "ops": ["ops"],
     "debug": ["scripts"]
   },
   "aliases": {
-    "dx": "dispatch",
     "i": "install",
     "up": "update",
     "portclean": "port",

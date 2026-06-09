@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { commandExists, formatCommand, runResolved } from "./run.ts";
@@ -11,24 +11,15 @@ export const PACKAGE_NAME = "@memoir/dispatch";
 export const DISPATCH_BIN = "dispatch";
 
 const MANAGED_SCRIPTS: Record<string, string> = {
-  ci: "dx ci",
-  check: "dx check",
-  lint: "dx lint",
-  "lint:fix": "dx lint --fix",
-  typecheck: "dx typecheck",
-  test: "dx test",
-  "test:watch": "dx test --watch",
-  "test:coverage": "dx test --coverage",
-  clean: "dx clean",
-};
-
-const REPO_OP_SCRIPTS: Record<string, string> = {
-  dev: "dx dev",
-  sync: "dx sync",
-  portclean: "dx portclean",
-  "update-all": "dx update-all",
-  dp: "dx deploy",
-  menu: "dx menu",
+  ci: "dispatch ci",
+  check: "dispatch check",
+  lint: "dispatch lint",
+  "lint:fix": "dispatch lint --fix",
+  typecheck: "dispatch typecheck",
+  test: "dispatch test",
+  "test:watch": "dispatch test --watch",
+  "test:coverage": "dispatch test --coverage",
+  clean: "dispatch clean",
 };
 
 const TEST_PATTERNS = [
@@ -81,7 +72,7 @@ type TestMode = "once" | "watch" | "coverage";
 type TestRunner = "vitest" | "jest" | "node" | null;
 
 export function managedScripts(): Record<string, string> {
-  return { ...MANAGED_SCRIPTS, ...REPO_OP_SCRIPTS };
+  return { ...MANAGED_SCRIPTS, ...DEFAULT_REPO_SCRIPTS };
 }
 
 export function scriptIfUnmanaged(context: DispatchContext, scriptName: string, args: string[]): ScriptResolution {
@@ -98,8 +89,8 @@ export function isManagedScript(script: string, scriptName?: string): boolean {
   const normalized = script.trim().replace(/\s+/g, " ");
   const expected = scriptName ? managedScripts()[scriptName] : undefined;
   if (expected && normalized === expected) return true;
-  if (/^bun run src\/cli\.ts\s+(ci|check|lint|typecheck|test|clean|build|dev|sync|port|portclean|update|update-all|deploy|menu)(\s|$)/.test(normalized)) return true;
-  return /^(dispatch|dx|repo-tools)\s+(ci|check|lint|typecheck|test|clean|build|dev|sync|port|portclean|update|update-all|deploy|menu)(\s|$)/.test(normalized);
+  if (/^bun run src\/cli\.ts\s+(ci|check|lint|typecheck|test|clean|build|dev|sync|port|portclean|update|update-all|deploy|menu|convex)(\s|$)/.test(normalized)) return true;
+  return /^(dispatch|repo-tools)\s+(ci|check|lint|typecheck|test|clean|build|dev|sync|port|portclean|update|update-all|deploy|menu|convex)(\s|$)/.test(normalized);
 }
 
 export async function lintCommandFor(context: DispatchContext, args: string[]): Promise<ResolvedCommand | void> {
@@ -284,7 +275,7 @@ export async function initStandardRepo(context: DispatchContext, args: string[])
     process.exit(4);
   }
 
-  for (const [name, wanted] of Object.entries(REPO_OP_SCRIPTS)) {
+  for (const [name, wanted] of Object.entries(await recommendedRepoScripts(context))) {
     const current = packageJson.scripts?.[name];
     if (current && !isManagedScript(current, name)) continue;
     if (current !== wanted) {
@@ -308,6 +299,51 @@ export async function initStandardRepo(context: DispatchContext, args: string[])
 
   console.log(dryRun ? "dispatch init dry run:" : "dispatch init updated:");
   for (const change of changes) console.log(`  ${change}`);
+}
+
+const DEFAULT_REPO_SCRIPTS: Record<string, string> = {
+  dev: "dispatch dev",
+  sync: "dispatch sync",
+  portclean: "dispatch port",
+  ps: "dispatch ps",
+  "update-all": "dispatch update",
+  dp: "dispatch deploy",
+};
+
+async function recommendedRepoScripts(context: DispatchContext): Promise<Record<string, string>> {
+  const scripts = { ...DEFAULT_REPO_SCRIPTS };
+
+  if (await hasConvexEvidence(context)) {
+    scripts.convex = "dispatch convex";
+    scripts["convex:dev"] = "dispatch convex dev";
+    scripts["convex:deploy"] = "dispatch convex deploy";
+  }
+
+  if (hasDeployEvidence(context)) {
+    scripts.dp = "dispatch deploy";
+  }
+
+  return scripts;
+}
+
+async function hasConvexEvidence(context: DispatchContext): Promise<boolean> {
+  return (
+    hasPackage(context.packageJson, "convex") ||
+    existsSync(join(context.repoRoot, "convex")) ||
+    existsSync(join(context.repoRoot, "convex.json")) ||
+    await hasFileMatching(context.repoRoot, (path) => relative(context.repoRoot, path).startsWith(`convex${sep}`))
+  );
+}
+
+function hasDeployEvidence(context: DispatchContext): boolean {
+  const scripts = context.packageJson.scripts ?? {};
+  return Boolean(
+    scripts.deploy ||
+    scripts["deploy:prod"] ||
+    scripts["vercel:deploy"] ||
+    hasPackage(context.packageJson, "vercel") ||
+    existsSync(join(context.repoRoot, "vercel.json"))
+  );
 }
 
 export async function doctorStandardRepo(context: DispatchContext): Promise<void> {
@@ -399,7 +435,7 @@ async function detectTestRunner(context: DispatchContext): Promise<TestRunner> {
   return null;
 }
 
-function hasPackage(packageJson: PackageJson, name: string): boolean {
+export function hasPackage(packageJson: PackageJson, name: string): boolean {
   return Boolean(
     packageJson.dependencies?.[name] ||
     packageJson.devDependencies?.[name] ||

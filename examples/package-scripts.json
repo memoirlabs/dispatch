@@ -6,7 +6,13 @@
     "test": "dispatch test",
     "build": "dispatch build",
     "clean": "dispatch clean",
-    "ps": "dispatch ps"
+    "sync": "dispatch sync",
+    "portclean": "dispatch port",
+    "ps": "dispatch ps",
+    "dp": "dispatch deploy",
+    "convex": "dispatch convex",
+    "convex:dev": "dispatch convex dev",
+    "convex:deploy": "dispatch convex deploy"
   },
   "devDependencies": {
     "@memoir/dispatch": "workspace:*"

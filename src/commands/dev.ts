@@ -7,7 +7,7 @@ export const devCommand: DispatchCommand = {
   name: "dev",
   category: "core",
   summary: "Run the project dev server.",
-  examples: ["dispatch dev", "dx dev -- --host 0.0.0.0"],
+  examples: ["dispatch dev", "dispatch dev -- --host 0.0.0.0"],
   run: (context, args) => {
     const custom = context.config.commands?.dev;
     if (custom) return { cmd: [...normalizeCommand(custom), ...args], cwd: context.repoRoot };
