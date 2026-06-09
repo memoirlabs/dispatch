@@ -390,8 +390,15 @@ function repoLocalBin(repoRoot: string, name: string): string | null {
 
 function packageOwnedBin(name: string): string | null {
   const suffix = process.platform === "win32" ? ".cmd" : "";
-  const path = join(packageRoot(), "node_modules/.bin", `${name}${suffix}`);
-  return existsSync(path) ? path : null;
+  const candidates = [
+    join(packageRoot(), "node_modules/.bin", `${name}${suffix}`),
+    join(packageRoot(), "../../.bin", `${name}${suffix}`),
+    join(packageRoot(), `../../${name}/bin/${name}${suffix}`),
+  ];
+  for (const path of candidates) {
+    if (existsSync(path)) return path;
+  }
+  return null;
 }
 
 function packageRoot(): string {

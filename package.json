@@ -61,6 +61,8 @@
     "dp": "bun run src/cli.ts deploy",
     "convex": "bun run src/cli.ts convex",
     "menu": "bun run src/cli.ts menu",
+    "setup": "bun run src/cli.ts init",
+    "smoke:pack": "bun scripts/smoke-pack.ts",
     "build:binary": "bun build --compile --outfile dist/dispatch ./src/cli.ts",
     "pack:dry-run": "bun pm pack --dry-run",
     "ci": "bun run src/cli.ts ci",

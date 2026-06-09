@@ -3,9 +3,10 @@ import type { DispatchCommand } from "../types.ts";
 
 export const processesCommand: DispatchCommand = {
   name: "processes",
+  aliases: ["ps", "proc"],
   category: "repo",
   summary: "Show processes that appear to belong to the current repo.",
-  usage: "dispatch processes [--deep] [--json] [--all]",
-  examples: ["dispatch processes", "dispatch processes --deep", "dispatch processes --json"],
+  usage: "dispatch ps [--deep] [--json] [--all]",
+  examples: ["dispatch ps", "dispatch processes --deep", "dispatch ps --json"],
   run: listRepoProcesses,
 };

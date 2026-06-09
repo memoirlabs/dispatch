@@ -99,7 +99,9 @@ bun run dp
 dispatch deploy
 ```
 
-`dispatch deploy` prefers project scripts such as `deploy`, `deploy:prod`, and `deploy:web`. If none exist, it falls back to Vercel.
+`dispatch deploy` runs the CI confidence path first, then prefers project scripts such as `deploy`, `deploy:prod`, and `deploy:web`. If none exist, it falls back to Vercel.
+
+Use `dispatch deploy --skip-checks` only when you intentionally want to bypass the confidence path.
 
 Convex:
 
@@ -146,6 +148,12 @@ Dry-run package contents:
 
 ```bash
 bun run pack:dry-run
+```
+
+Verify a packed install in a temporary repo:
+
+```bash
+bun run smoke:pack
 ```
 
 Publish:
