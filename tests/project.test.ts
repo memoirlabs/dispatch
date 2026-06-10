@@ -11,6 +11,8 @@ import {
   updateLatestCommand,
 } from "../src/project.ts";
 import { parseLsofCwds, parseLsofNamesByPid, parseProcessLine } from "../src/processes.ts";
+import { planAgentInstructionsUpdate, upsertManagedBlock } from "../src/standard.ts";
+import type { DispatchContext } from "../src/types.ts";
 
 const tmpRoot = join(import.meta.dir, ".tmp");
 
@@ -81,3 +83,65 @@ test("parseLsofNamesByPid maps names by pid", () => {
   const names = parseLsofNamesByPid(["p123", "nTCP *:3000 (LISTEN)", "nTCP 127.0.0.1:5173 (LISTEN)"].join("\n"));
   expect(names.get(123)).toEqual(["TCP *:3000 (LISTEN)", "TCP 127.0.0.1:5173 (LISTEN)"]);
 });
+
+test("upsertManagedBlock appends dispatch agent instructions to existing content", () => {
+  const block = [
+    "<!-- dispatch:agents:start -->",
+    "## Dispatch",
+    "<!-- dispatch:agents:end -->",
+  ].join("\n");
+
+  expect(upsertManagedBlock("# Existing\n", block)).toBe(`# Existing\n\n${block}\n`);
+});
+
+test("upsertManagedBlock replaces only the dispatch managed block", () => {
+  const oldBlock = [
+    "<!-- dispatch:agents:start -->",
+    "old",
+    "<!-- dispatch:agents:end -->",
+  ].join("\n");
+  const newBlock = [
+    "<!-- dispatch:agents:start -->",
+    "new",
+    "<!-- dispatch:agents:end -->",
+  ].join("\n");
+
+  expect(upsertManagedBlock(`# Existing\n\n${oldBlock}\n\nKeep me.\n`, newBlock)).toBe(`# Existing\n\n${newBlock}\n\nKeep me.\n`);
+});
+
+test("upsertManagedBlock reports partial marker conflicts", () => {
+  const block = [
+    "<!-- dispatch:agents:start -->",
+    "## Dispatch",
+    "<!-- dispatch:agents:end -->",
+  ].join("\n");
+
+  expect(upsertManagedBlock("# Existing\n<!-- dispatch:agents:start -->\n", block)).toEqual({
+    conflict: expect.stringContaining("partial Dispatch agent instructions block"),
+  });
+});
+
+test("planAgentInstructionsUpdate creates AGENTS.md content for target repos", async () => {
+  const root = join(tmpRoot, "agents-create");
+  await mkdir(root, { recursive: true });
+
+  const plan = planAgentInstructionsUpdate(testContext(root));
+
+  expect(plan.conflict).toBeUndefined();
+  expect(plan.content).toContain("<!-- dispatch:agents:start -->");
+  expect(plan.content).toContain("dispatch check");
+  expect(plan.content).toContain("<!-- dispatch:agents:end -->");
+});
+
+function testContext(repoRoot: string): DispatchContext {
+  return {
+    startCwd: repoRoot,
+    repoRoot,
+    packageJson: {
+      name: "target-repo",
+      scripts: {},
+    },
+    packageManager: "bun",
+    config: {},
+  };
+}

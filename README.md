@@ -70,6 +70,20 @@ If the repo looks like it uses Convex, `init` also adds:
 }
 ```
 
+`dispatch init` also creates or updates `AGENTS.md` in the consuming user's target repo. This is an actual setup step that writes into their codebase; it is not just an `AGENTS.md` file shipped inside the npm package.
+
+If the target repo already has `AGENTS.md`, Dispatch appends or replaces only its managed block:
+
+```md
+<!-- dispatch:agents:start -->
+...
+<!-- dispatch:agents:end -->
+```
+
+User-authored content outside that block is left alone.
+
+`dispatch doctor` reports whether the target repo's Dispatch agent instructions are missing, stale, malformed, or OK.
+
 ## Standard Commands
 
 Quality:

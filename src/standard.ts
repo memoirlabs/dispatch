@@ -63,6 +63,10 @@ const CLEAN_TARGETS = [
   "tsconfig.tsbuildinfo",
 ];
 
+const AGENTS_PATH = "AGENTS.md";
+const AGENTS_START_MARKER = "<!-- dispatch:agents:start -->";
+const AGENTS_END_MARKER = "<!-- dispatch:agents:end -->";
+
 type ScriptResolution = {
   command?: ResolvedCommand;
   managed: boolean;
@@ -275,6 +279,13 @@ export async function initStandardRepo(context: DispatchContext, args: string[])
     process.exit(4);
   }
 
+  const agentsPlan = planAgentInstructionsUpdate(context);
+  if (agentsPlan.conflict) {
+    console.error(agentsPlan.conflict);
+    process.exit(4);
+  }
+  if (agentsPlan.content !== undefined) changes.push(AGENTS_PATH);
+
   for (const [name, wanted] of Object.entries(await recommendedRepoScripts(context))) {
     const current = packageJson.scripts?.[name];
     if (current && !isManagedScript(current, name)) continue;
@@ -291,6 +302,9 @@ export async function initStandardRepo(context: DispatchContext, args: string[])
 
   await writeManagedFile(context, ".oxlintrc.json", JSON.stringify(rootOxlintConfig(), null, 2) + "\n", { force, dryRun, changes });
   await writeManagedFile(context, ".github/workflows/ci.yml", githubWorkflow(context), { force, dryRun, changes });
+  if (agentsPlan.content !== undefined && !dryRun) {
+    await writeFile(join(context.repoRoot, AGENTS_PATH), agentsPlan.content);
+  }
 
   if (!changes.length) {
     console.log("dispatch init: no changes needed.");
@@ -352,6 +366,7 @@ export async function doctorStandardRepo(context: DispatchContext): Promise<void
   const oxlintConfig = existsSync(join(context.repoRoot, ".oxlintrc.json"));
   const oxlintBase = existsSync(join(packageRoot(), "oxlint/base.json"));
   const ciWorkflow = existsSync(join(context.repoRoot, ".github/workflows/ci.yml"));
+  const agentInstructions = agentInstructionsStatus(context);
   const hasTs = await hasTypeScriptEvidence(context.repoRoot);
   const hasTypescript = Boolean(repoLocalBin(context.repoRoot, "tsc"));
   const testRunner = await detectTestRunner(context);
@@ -367,6 +382,7 @@ export async function doctorStandardRepo(context: DispatchContext): Promise<void
   console.log(`Test runner: ${testRunner ?? "none"}`);
   console.log(`Build script: ${build ? (isManagedScript(build, "build") ? "managed/ignored" : "repo-local build detected") : "none"}`);
   console.log(`CI workflow: ${ciWorkflow ? ".github/workflows/ci.yml" : "missing"}`);
+  console.log(`Agent instructions: ${agentInstructions}`);
 }
 
 async function runStandardSteps(context: DispatchContext, steps: [string, ResolvedCommand | void][]): Promise<void> {
@@ -522,6 +538,87 @@ async function writeManagedFile(
   if (options.dryRun) return;
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, content);
+}
+
+type AgentInstructionsPlan = {
+  content?: string;
+  conflict?: string;
+};
+
+export function planAgentInstructionsUpdate(context: DispatchContext): AgentInstructionsPlan {
+  const path = join(context.repoRoot, AGENTS_PATH);
+  const block = dispatchAgentInstructions(context);
+
+  if (!existsSync(path)) return { content: `${block}\n` };
+
+  const current = readFileSync(path, "utf8");
+  const next = upsertManagedBlock(current, block, AGENTS_PATH);
+  if (typeof next === "string") {
+    return next === current ? {} : { content: next };
+  }
+
+  return { conflict: next.conflict };
+}
+
+export function agentInstructionsStatus(context: DispatchContext): string {
+  const path = join(context.repoRoot, AGENTS_PATH);
+  if (!existsSync(path)) return "missing";
+
+  const current = readFileSync(path, "utf8");
+  const start = current.indexOf(AGENTS_START_MARKER);
+  const end = current.indexOf(AGENTS_END_MARKER);
+  if (start === -1 && end === -1) return "missing managed block";
+  if (start === -1 || end === -1 || end < start) return "malformed managed block";
+
+  return current.includes(dispatchAgentInstructions(context)) ? "OK" : "stale";
+}
+
+export function upsertManagedBlock(current: string, block: string, filename = AGENTS_PATH): string | { conflict: string } {
+  const start = current.indexOf(AGENTS_START_MARKER);
+  const end = current.indexOf(AGENTS_END_MARKER);
+
+  if (start === -1 && end === -1) {
+    const separator = current.endsWith("\n") ? "\n" : "\n\n";
+    return `${current}${separator}${block}\n`;
+  }
+
+  if (start === -1 || end === -1 || end < start) {
+    return {
+      conflict: `Conflict: ${filename} contains a partial Dispatch agent instructions block.\nFix the ${AGENTS_START_MARKER} / ${AGENTS_END_MARKER} markers, then run dispatch init again.`,
+    };
+  }
+
+  const afterEnd = end + AGENTS_END_MARKER.length;
+  const next = `${current.slice(0, start)}${block}${current.slice(afterEnd)}`;
+  return next.endsWith("\n") ? next : `${next}\n`;
+}
+
+function dispatchAgentInstructions(context: DispatchContext): string {
+  const packageScripts = context.packageJson.scripts ?? {};
+  const hasBuild = Boolean(packageScripts.build && !isManagedScript(packageScripts.build, "build"));
+  const hasDeploy = hasDeployEvidence(context);
+
+  return `${AGENTS_START_MARKER}
+## Dispatch
+
+This repo uses Dispatch for common project workflows. Prefer the repo scripts that call Dispatch instead of invoking lower-level tools directly.
+
+Use these commands when they are relevant:
+
+- \`dispatch lint\` for lint checks
+- \`dispatch typecheck\` for TypeScript checks
+- \`dispatch test\` for tests
+- \`dispatch check\` for the standard local confidence path
+- \`dispatch ci\` for the CI confidence path${hasBuild ? "\n- `dispatch build` or the repo's existing build script for production builds" : ""}${hasDeploy ? "\n- `dispatch deploy` for deployments" : ""}
+
+Setup and maintenance:
+
+- \`dispatch init\` refreshes Dispatch-managed repo files and scripts.
+- \`dispatch doctor\` prints Dispatch diagnostics for this repo.
+- The package manager detected for this repo is \`${context.packageManager}\`.
+
+Respect project-local scripts, command files, and config overrides. Dispatch resolves commands in this order: config override, project command file, package script, then built-in command.
+${AGENTS_END_MARKER}`;
 }
 
 function rootOxlintConfig(): Record<string, unknown> {
