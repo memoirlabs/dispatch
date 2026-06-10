@@ -1,20 +1,22 @@
 {
   "scripts": {
+    "ci": "dispatch ci",
     "check": "dispatch check",
     "lint": "dispatch lint",
+    "lint:fix": "dispatch lint --fix",
     "typecheck": "dispatch typecheck",
     "test": "dispatch test",
-    "build": "dispatch build",
+    "test:watch": "dispatch test --watch",
+    "test:coverage": "dispatch test --coverage",
     "clean": "dispatch clean",
+    "dev": "dispatch dev",
     "sync": "dispatch sync",
-    "portclean": "dispatch port",
-    "ps": "dispatch ps",
-    "dp": "dispatch deploy",
-    "convex": "dispatch convex",
-    "convex:dev": "dispatch convex dev",
-    "convex:deploy": "dispatch convex deploy"
+    "portclean": "dispatch portclean",
+    "update-all": "dispatch update-all",
+    "dp": "dispatch dp",
+    "menu": "dispatch menu"
   },
   "devDependencies": {
-    "@memoir/dispatch": "workspace:*"
+    "@memoir/dispatch": "^0.1.0"
   }
 }

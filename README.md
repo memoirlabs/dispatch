@@ -29,12 +29,12 @@ dispatch check
 dispatch sync
 dispatch deploy
 dispatch convex dev
-dispatch ps
+dispatch processes
 ```
 
 ## Generated Scripts
 
-`dispatch init` adds simple package scripts when they are missing or already managed by Dispatch:
+`dispatch init` applies the static script template shipped at `templates/package-scripts.json`. It adds these package scripts when they are missing or already managed by Dispatch:
 
 ```json
 {
@@ -50,12 +50,22 @@ dispatch ps
     "clean": "dispatch clean",
     "dev": "dispatch dev",
     "sync": "dispatch sync",
-    "portclean": "dispatch port",
-    "ps": "dispatch ps",
-    "update-all": "dispatch update",
-    "dp": "dispatch deploy"
+    "portclean": "dispatch portclean",
+    "update-all": "dispatch update-all",
+    "dp": "dispatch dp",
+    "menu": "dispatch menu"
   }
 }
+```
+
+After that, people use normal Bun scripts from the project:
+
+```bash
+bun sync
+bun dev
+bun portclean
+bun update-all
+bun dp
 ```
 
 If the repo looks like it uses Convex, `init` also adds:
@@ -100,17 +110,17 @@ Repo operations:
 
 ```bash
 dispatch sync
-dispatch port
-dispatch ps
+dispatch portclean
+dispatch processes
 dispatch clean
-dispatch update
+dispatch update-all
 ```
 
 Deploy:
 
 ```bash
 bun run dp
-dispatch deploy
+dispatch dp
 ```
 
 `dispatch deploy` runs the CI confidence path first, then prefers project scripts such as `deploy`, `deploy:prod`, and `deploy:web`. If none exist, it falls back to Vercel.

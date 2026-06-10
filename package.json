@@ -28,6 +28,7 @@
     },
     "./cli": "./src/cli.ts",
     "./package.json": "./package.json",
+    "./templates/package-scripts.json": "./templates/package-scripts.json",
     "./oxlint/base.json": "./oxlint/base.json",
     "./oxlint/configuration_schema.json": "./oxlint/configuration_schema.json"
   },
@@ -58,7 +59,7 @@
     "sync": "bun run src/cli.ts sync",
     "portclean": "bun run src/cli.ts port",
     "update-all": "bun run src/cli.ts update-all",
-    "dp": "bun run src/cli.ts deploy",
+    "dp": "bun run src/cli.ts dp",
     "convex": "bun run src/cli.ts convex",
     "menu": "bun run src/cli.ts menu",
     "setup": "bun run src/cli.ts init",

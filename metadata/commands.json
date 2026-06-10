@@ -4,23 +4,16 @@
   "binaries": ["dispatch"],
   "categories": {
     "core": ["dev", "start", "preview", "menu"],
-    "repo": ["init", "install", "update", "sync", "port", "processes", "clean", "convex", "doctor"],
-    "quality": ["lint", "fix", "typecheck", "test", "check", "ci", "build", "verify", "prepare"],
-    "deploy": ["deploy", "release"],
+    "repo": ["init", "install", "update", "update-all", "sync", "port", "portclean", "processes", "clean", "convex", "doctor"],
+    "quality": ["lint", "lint:fix", "typecheck", "test", "check", "ci", "build", "verify", "prepare"],
+    "deploy": ["deploy", "dp", "release"],
     "ops": ["ops"],
     "debug": ["scripts"]
   },
   "aliases": {
-    "i": "install",
-    "up": "update",
+    "update-all": "update",
     "portclean": "port",
-    "pc": "port",
-    "ps": "processes",
-    "proc": "processes",
-    "tc": "typecheck",
-    "t": "test",
-    "b": "build",
     "dp": "deploy",
-    "ship": "deploy"
+    "lint:fix": "fix"
   }
 }

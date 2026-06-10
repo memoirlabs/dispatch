@@ -17,7 +17,7 @@ export const deployCommand: DispatchCommand = {
 
     const configured = context.config.deployScript;
     if (configured) return { cmd: runPackageScript(context.packageManager, configured, forwarded), cwd: context.repoRoot };
-    const scripted = customOrScript(context, forwarded, "deploy", ["deploy", "deploy:prod", "deploy:web", "release:ship", "ship"]);
+    const scripted = customOrScript(context, forwarded, "deploy", ["deploy", "deploy:prod", "deploy:web"]);
     if (scripted) return scripted;
     return { cmd: dlxToolCommand(context.packageManager, "vercel", ["deploy", "--prod", ...forwarded]), cwd: context.repoRoot };
   },

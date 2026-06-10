@@ -6,14 +6,10 @@ const config: DispatchConfig = {
   appFilter: "@my-scope/web-app",
   commandDir: ".dispatch/commands",
   deployScript: "deploy",
-  syncMode: "pull",
-  aliases: {
-    dp: "deploy",
-  },
   scriptAliases: {
     port: ["portclean", "checkport"],
     update: ["update-all", "deps:refresh"],
-    verify: ["preflight", "ship:verify"],
+    verify: ["preflight"],
   },
   commands: {
     // Override any dispatch command with a shell string or argv array.

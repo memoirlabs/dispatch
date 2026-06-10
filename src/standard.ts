@@ -10,18 +10,6 @@ import type { DispatchContext, PackageJson, ResolvedCommand } from "./types.ts";
 export const PACKAGE_NAME = "@memoir/dispatch";
 export const DISPATCH_BIN = "dispatch";
 
-const MANAGED_SCRIPTS: Record<string, string> = {
-  ci: "dispatch ci",
-  check: "dispatch check",
-  lint: "dispatch lint",
-  "lint:fix": "dispatch lint --fix",
-  typecheck: "dispatch typecheck",
-  test: "dispatch test",
-  "test:watch": "dispatch test --watch",
-  "test:coverage": "dispatch test --coverage",
-  clean: "dispatch clean",
-};
-
 const TEST_PATTERNS = [
   ".test.js",
   ".test.jsx",
@@ -66,6 +54,7 @@ const CLEAN_TARGETS = [
 const AGENTS_PATH = "AGENTS.md";
 const AGENTS_START_MARKER = "<!-- dispatch:agents:start -->";
 const AGENTS_END_MARKER = "<!-- dispatch:agents:end -->";
+const PACKAGE_SCRIPTS_TEMPLATE = readPackageScriptsTemplate();
 
 type ScriptResolution = {
   command?: ResolvedCommand;
@@ -76,7 +65,7 @@ type TestMode = "once" | "watch" | "coverage";
 type TestRunner = "vitest" | "jest" | "node" | null;
 
 export function managedScripts(): Record<string, string> {
-  return { ...MANAGED_SCRIPTS, ...DEFAULT_REPO_SCRIPTS };
+  return { ...PACKAGE_SCRIPTS_TEMPLATE };
 }
 
 export function scriptIfUnmanaged(context: DispatchContext, scriptName: string, args: string[]): ScriptResolution {
@@ -94,7 +83,7 @@ export function isManagedScript(script: string, scriptName?: string): boolean {
   const expected = scriptName ? managedScripts()[scriptName] : undefined;
   if (expected && normalized === expected) return true;
   if (/^bun run src\/cli\.ts\s+(ci|check|lint|typecheck|test|clean|build|dev|sync|port|portclean|update|update-all|deploy|menu|convex)(\s|$)/.test(normalized)) return true;
-  return /^(dispatch|repo-tools)\s+(ci|check|lint|typecheck|test|clean|build|dev|sync|port|portclean|update|update-all|deploy|menu|convex)(\s|$)/.test(normalized);
+  return /^(dispatch|repo-tools)\s+(ci|check|lint|typecheck|test|clean|build|dev|sync|port|portclean|update|update-all|deploy|dp|menu|convex)(\s|$)/.test(normalized);
 }
 
 export async function lintCommandFor(context: DispatchContext, args: string[]): Promise<ResolvedCommand | void> {
@@ -261,7 +250,7 @@ export async function initStandardRepo(context: DispatchContext, args: string[])
     }
   }
 
-  for (const [name, wanted] of Object.entries(MANAGED_SCRIPTS)) {
+  for (const [name, wanted] of Object.entries(PACKAGE_SCRIPTS_TEMPLATE)) {
     const current = packageJson.scripts?.[name];
     if (!current || isManagedScript(current, name) || force) {
       if (current !== wanted) {
@@ -315,26 +304,13 @@ export async function initStandardRepo(context: DispatchContext, args: string[])
   for (const change of changes) console.log(`  ${change}`);
 }
 
-const DEFAULT_REPO_SCRIPTS: Record<string, string> = {
-  dev: "dispatch dev",
-  sync: "dispatch sync",
-  portclean: "dispatch port",
-  ps: "dispatch ps",
-  "update-all": "dispatch update",
-  dp: "dispatch deploy",
-};
-
 async function recommendedRepoScripts(context: DispatchContext): Promise<Record<string, string>> {
-  const scripts = { ...DEFAULT_REPO_SCRIPTS };
+  const scripts: Record<string, string> = {};
 
   if (await hasConvexEvidence(context)) {
     scripts.convex = "dispatch convex";
     scripts["convex:dev"] = "dispatch convex dev";
     scripts["convex:deploy"] = "dispatch convex deploy";
-  }
-
-  if (hasDeployEvidence(context)) {
-    scripts.dp = "dispatch deploy";
   }
 
   return scripts;
@@ -429,6 +405,18 @@ function packageVersion(): string {
 function packageSelfJson(): PackageJson {
   try {
     return JSON.parse(readFileSync(join(packageRoot(), "package.json"), "utf8")) as PackageJson;
+  } catch {
+    return {};
+  }
+}
+
+function readPackageScriptsTemplate(): Record<string, string> {
+  try {
+    const raw = readFileSync(join(packageRoot(), "templates/package-scripts.json"), "utf8");
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+    );
   } catch {
     return {};
   }
