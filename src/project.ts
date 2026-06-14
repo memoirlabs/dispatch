@@ -62,7 +62,7 @@ export function detectPackageManager(repoRoot: string, packageJson: PackageJson)
   if (existsSync(join(repoRoot, "yarn.lock"))) return "yarn";
   if (existsSync(join(repoRoot, "bun.lock")) || existsSync(join(repoRoot, "bun.lockb"))) return "bun";
 
-  return "npm";
+  return "bun";
 }
 
 export function runPackageScript(packageManager: PackageManager, script: string, args: string[] = []): string[] {

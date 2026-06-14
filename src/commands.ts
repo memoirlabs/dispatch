@@ -19,7 +19,7 @@ import { previewCommand } from "./commands/preview.ts";
 import { releaseCommand } from "./commands/release.ts";
 import { scriptsCommand } from "./commands/scripts.ts";
 import { startCommand } from "./commands/start.ts";
-import { syncCommand } from "./commands/sync.ts";
+import { syncCarefulCommand, syncCommand } from "./commands/sync.ts";
 import { testCommand } from "./commands/test.ts";
 import { typecheckCommand } from "./commands/typecheck.ts";
 import { updateCommand } from "./commands/update.ts";
@@ -39,6 +39,7 @@ export const commands: DispatchCommand[] = [
   installDispatchCommand,
   updateCommand,
   syncCommand,
+  syncCarefulCommand,
   portCommand,
   processesCommand,
   cleanCommand,
@@ -72,6 +73,7 @@ export function printCommandList(): void {
   console.log("Dispatch");
   console.log("");
   console.log("Usage:");
+  console.log("  dispatch");
   console.log("  dispatch <command> [...args]");
   console.log("");
 

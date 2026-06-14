@@ -4,7 +4,7 @@ import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { commandExists, formatCommand, runResolved } from "./run.ts";
-import { runPackageScript } from "./project.ts";
+import { installCommand, runPackageScript } from "./project.ts";
 import type { DispatchContext, PackageJson, ResolvedCommand } from "./types.ts";
 
 export const PACKAGE_NAME = "@memoir/dispatch";
@@ -68,6 +68,17 @@ export function managedScripts(): Record<string, string> {
   return { ...PACKAGE_SCRIPTS_TEMPLATE };
 }
 
+export function isDispatchInitialized(context: DispatchContext): boolean {
+  const scripts = context.packageJson.scripts ?? {};
+  const hasManagedWorkflowScript = Object.keys(PACKAGE_SCRIPTS_TEMPLATE)
+    .some((name) => scripts[name] && isManagedScript(scripts[name], name));
+
+  return (
+    context.packageJson.name === PACKAGE_NAME ||
+    (hasPackage(context.packageJson, PACKAGE_NAME) && hasManagedWorkflowScript)
+  );
+}
+
 export function scriptIfUnmanaged(context: DispatchContext, scriptName: string, args: string[]): ScriptResolution {
   const script = context.packageJson.scripts?.[scriptName];
   if (!script) return { managed: false };
@@ -82,8 +93,8 @@ export function isManagedScript(script: string, scriptName?: string): boolean {
   const normalized = script.trim().replace(/\s+/g, " ");
   const expected = scriptName ? managedScripts()[scriptName] : undefined;
   if (expected && normalized === expected) return true;
-  if (/^bun run src\/cli\.ts\s+(ci|check|lint|typecheck|test|clean|build|dev|sync|port|portclean|update|update-all|deploy|menu|convex)(\s|$)/.test(normalized)) return true;
-  return /^(dispatch|repo-tools)\s+(ci|check|lint|typecheck|test|clean|build|dev|sync|port|portclean|update|update-all|deploy|dp|menu|convex)(\s|$)/.test(normalized);
+  if (/^bun run src\/cli\.ts\s+(ci|check|lint|typecheck|test|clean|build|dev|sync|sync-careful|port|portclean|update|update-all|deploy|menu|convex)(\s|$)/.test(normalized)) return true;
+  return /^dispatch\s+(ci|check|lint|typecheck|test|clean|build|dev|sync|sync-careful|port|portclean|update|update-all|deploy|dp|menu|convex)(\s|$)/.test(normalized);
 }
 
 export async function lintCommandFor(context: DispatchContext, args: string[]): Promise<ResolvedCommand | void> {
@@ -238,8 +249,10 @@ export async function cleanStandardArtifacts(context: DispatchContext, args: str
 export async function initStandardRepo(context: DispatchContext, args: string[]): Promise<void> {
   const dryRun = args.includes("--dry-run");
   const force = args.includes("--force");
+  const noInstall = args.includes("--no-install");
   const changes: string[] = [];
   const conflicts: string[] = [];
+  let needsInstall = false;
   const packageJson = { ...context.packageJson, scripts: { ...context.packageJson.scripts } };
 
   if (packageJson.name !== PACKAGE_NAME) {
@@ -247,6 +260,7 @@ export async function initStandardRepo(context: DispatchContext, args: string[])
     if (!packageJson.devDependencies[PACKAGE_NAME] && !packageJson.dependencies?.[PACKAGE_NAME]) {
       packageJson.devDependencies[PACKAGE_NAME] = `^${packageVersion()}`;
       changes.push(`package.json devDependencies.${PACKAGE_NAME}`);
+      needsInstall = true;
     }
   }
 
@@ -302,6 +316,20 @@ export async function initStandardRepo(context: DispatchContext, args: string[])
 
   console.log(dryRun ? "dispatch init dry run:" : "dispatch init updated:");
   for (const change of changes) console.log(`  ${change}`);
+
+  if (needsInstall) {
+    const command = installCommand(context.packageManager);
+    if (dryRun || noInstall) {
+      console.log("");
+      console.log(`Next install step: ${formatCommand(command)}`);
+      return;
+    }
+
+    console.log("");
+    console.log(`$ ${formatCommand(command)}`);
+    const exitCode = await runResolved({ cmd: command, cwd: context.repoRoot });
+    if (exitCode !== 0) process.exit(exitCode);
+  }
 }
 
 async function recommendedRepoScripts(context: DispatchContext): Promise<Record<string, string>> {
@@ -328,11 +356,11 @@ async function hasConvexEvidence(context: DispatchContext): Promise<boolean> {
 function hasDeployEvidence(context: DispatchContext): boolean {
   const scripts = context.packageJson.scripts ?? {};
   return Boolean(
+    context.config.commands?.deploy ||
+    context.config.deployScript ||
+    context.config.scriptAliases?.deploy?.length ||
     scripts.deploy ||
-    scripts["deploy:prod"] ||
-    scripts["vercel:deploy"] ||
-    hasPackage(context.packageJson, "vercel") ||
-    existsSync(join(context.repoRoot, "vercel.json"))
+    (scripts.dp && !isManagedScript(scripts.dp, "dp"))
   );
 }
 

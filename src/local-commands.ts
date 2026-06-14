@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { normalizeCommand } from "./config.ts";
 import type { CommandResult, DispatchContext, ProjectCommand, ResolvedCommand } from "./types.ts";
 
-const EXTENSIONS = [".ts", ".js", ".mjs"] as const;
+const EXTENSIONS = [".ts"] as const;
 
 export async function resolveConfigCommand(context: DispatchContext, name: string, args: string[]): Promise<ResolvedCommand | null> {
   const configured = context.config.commands?.[name];

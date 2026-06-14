@@ -4,7 +4,7 @@
   "binaries": ["dispatch"],
   "categories": {
     "core": ["dev", "start", "preview", "menu"],
-    "repo": ["init", "install", "update", "update-all", "sync", "port", "portclean", "processes", "clean", "convex", "doctor"],
+    "repo": ["init", "install", "update", "update-all", "sync", "sync-careful", "port", "portclean", "processes", "clean", "convex", "doctor"],
     "quality": ["lint", "lint:fix", "typecheck", "test", "check", "ci", "build", "verify", "prepare"],
     "deploy": ["deploy", "dp", "release"],
     "ops": ["ops"],

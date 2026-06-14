@@ -5,6 +5,7 @@ import { loadConfig } from "./config.ts";
 import { resolveConfigCommand, resolveLocalCommand } from "./local-commands.ts";
 import { detectPackageManager, findProjectRoot, readPackageJson } from "./project.ts";
 import { formatCommand, runResolved } from "./run.ts";
+import { initStandardRepo, isDispatchInitialized } from "./standard.ts";
 import type { DispatchContext } from "./types.ts";
 
 const VERSION = "0.1.0";
@@ -13,7 +14,7 @@ async function main(): Promise<void> {
   const parsed = parseGlobalArgs(process.argv.slice(2));
   const [name, ...args] = parsed.args;
 
-  if (!name || name === "help" || name === "list" || name === "--help" || name === "-h") {
+  if (name === "help" || name === "list" || name === "--help" || name === "-h") {
     printCommandList();
     return;
   }
@@ -39,6 +40,21 @@ async function main(): Promise<void> {
     verbose: parsed.verbose,
     quiet: parsed.quiet,
   };
+
+  if (!name) {
+    if (!isDispatchInitialized(context)) {
+      await initStandardRepo(context, args);
+      return;
+    }
+
+    printCommandList();
+    return;
+  }
+
+  if (isInitFlag(name)) {
+    await initStandardRepo(context, parsed.args);
+    return;
+  }
 
   const map = buildCommandMap();
   const command = map.get(name);
@@ -94,6 +110,10 @@ function parseGlobalArgs(args: string[]): { args: string[]; cwd?: string; verbos
   }
 
   return { args: remaining, cwd, verbose, quiet };
+}
+
+function isInitFlag(arg: string): boolean {
+  return arg === "--dry-run" || arg === "--force" || arg === "--no-install";
 }
 
 function usageError(message: string): never {

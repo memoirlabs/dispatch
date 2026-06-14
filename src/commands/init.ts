@@ -5,6 +5,6 @@ export const initCommand: DispatchCommand = {
   name: "init",
   category: "repo",
   summary: "Add standard repo tooling files and scripts.",
-  examples: ["dispatch init", "dispatch init --dry-run", "dispatch init --force"],
+  examples: ["dispatch init", "dispatch init --dry-run", "dispatch init --force", "dispatch init --no-install"],
   run: initStandardRepo,
 };

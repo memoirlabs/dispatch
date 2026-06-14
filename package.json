@@ -57,6 +57,7 @@
     "test:coverage": "bun run src/cli.ts test --coverage",
     "clean": "bun run src/cli.ts clean",
     "sync": "bun run src/cli.ts sync",
+    "sync-careful": "bun run src/cli.ts sync-careful",
     "portclean": "bun run src/cli.ts port",
     "update-all": "bun run src/cli.ts update-all",
     "dp": "bun run src/cli.ts dp",
@@ -65,7 +66,7 @@
     "setup": "bun run src/cli.ts init",
     "smoke:pack": "bun scripts/smoke-pack.ts",
     "build:binary": "bun build --compile --outfile dist/dispatch ./src/cli.ts",
-    "pack:dry-run": "bun pm pack --dry-run",
+    "pack:dry-run": "npm --cache ${TMPDIR:-/tmp}/dispatch-npm-cache pack --dry-run",
     "ci": "bun run src/cli.ts ci",
     "prepublishOnly": "bun run ci"
   },

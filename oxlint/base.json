@@ -10,6 +10,8 @@
   },
   "rules": {
     "no-console": "off",
-    "no-debugger": "warn"
+    "no-debugger": "warn",
+    "no-await-in-loop": "off",
+    "unicorn/no-array-sort": "off"
   }
 }

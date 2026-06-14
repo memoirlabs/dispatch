@@ -74,6 +74,60 @@ export async function syncRepo(context: DispatchContext, args: string[]): Promis
   }
 }
 
+export async function syncRepoCareful(context: DispatchContext, args: string[]): Promise<void> {
+  const dryRun = args.includes("--dry-run");
+  const branch = syncTargetBranch(args);
+  const target = `origin/${branch}`;
+
+  if (dryRun) {
+    for (const cmd of [
+      ["git", "fetch", "origin"],
+      ["git", "status", "--porcelain"],
+      ["git", "rev-list", "--left-right", "--count", `HEAD...${target}`],
+      ["git", "merge", "--ff-only", target],
+    ]) {
+      console.log(`[dry-run] ${formatCommand(cmd)}`);
+    }
+    return;
+  }
+
+  await runRequiredGit(context.repoRoot, ["git", "fetch", "origin"]);
+
+  const status = await runCapture(["git", "status", "--porcelain"], context.repoRoot);
+  if (status.exitCode !== 0) stopCarefulSync("could not read git status", status.stderr);
+
+  const dirty = status.stdout.trim();
+  if (dirty) {
+    stopCarefulSync(
+      "local files have uncommitted changes",
+      dirty.split(/\r?\n/).slice(0, 20).join("\n"),
+    );
+  }
+
+  const verifyTarget = await runCapture(["git", "rev-parse", "--verify", target], context.repoRoot);
+  if (verifyTarget.exitCode !== 0) stopCarefulSync(`remote branch ${target} was not found`, verifyTarget.stderr);
+
+  const divergence = await runCapture(["git", "rev-list", "--left-right", "--count", `HEAD...${target}`], context.repoRoot);
+  if (divergence.exitCode !== 0) stopCarefulSync(`could not compare HEAD with ${target}`, divergence.stderr);
+
+  const counts = parseDivergenceCounts(divergence.stdout);
+  if (!counts) stopCarefulSync(`could not parse git divergence for ${target}`, divergence.stdout);
+
+  if (counts.ahead > 0) {
+    stopCarefulSync(
+      `local HEAD has ${counts.ahead} commit${counts.ahead === 1 ? "" : "s"} not in ${target}`,
+      "Use dispatch sync only when you intentionally want to discard local work.",
+    );
+  }
+
+  if (counts.behind === 0) {
+    console.log(`Already up to date with ${target}.`);
+    return;
+  }
+
+  await runRequiredGit(context.repoRoot, ["git", "merge", "--ff-only", target]);
+}
+
 function syncTargetBranch(args: string[]): string {
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -81,6 +135,26 @@ function syncTargetBranch(args: string[]): string {
     if (arg.startsWith("--branch=")) return arg.slice("--branch=".length) || "main";
   }
   return "main";
+}
+
+export function parseDivergenceCounts(output: string): { ahead: number; behind: number } | null {
+  const [aheadRaw, behindRaw] = output.trim().split(/\s+/, 2);
+  const ahead = Number.parseInt(aheadRaw, 10);
+  const behind = Number.parseInt(behindRaw, 10);
+  if (!Number.isInteger(ahead) || !Number.isInteger(behind) || ahead < 0 || behind < 0) return null;
+  return { ahead, behind };
+}
+
+async function runRequiredGit(cwd: string, cmd: string[]): Promise<void> {
+  console.log(`$ ${formatCommand(cmd)}`);
+  const exitCode = await runResolved({ cmd, cwd });
+  if (exitCode !== 0) process.exit(exitCode);
+}
+
+function stopCarefulSync(message: string, detail?: string): never {
+  console.error(`sync-careful stopped: ${message}.`);
+  if (detail?.trim()) console.error(detail.trim());
+  process.exit(4);
 }
 
 export async function updateAll(context: DispatchContext, args: string[]): Promise<void> {
