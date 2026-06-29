@@ -14,7 +14,7 @@ import {
 import { deployCommand } from "../src/commands/deploy.ts";
 import { resolveLocalCommand } from "../src/local-commands.ts";
 import { parseLsofCwds, parseLsofNamesByPid, parseProcessLine } from "../src/processes.ts";
-import { isDispatchInitialized, managedScripts, planAgentInstructionsUpdate, upsertManagedBlock } from "../src/standard.ts";
+import { isDispatchInitialized, isManagedScript, managedScripts, planAgentInstructionsUpdate, planDispatchWorkspaceUpdate, updateManagedPackageScripts, upsertManagedBlock } from "../src/standard.ts";
 import type { DispatchContext } from "../src/types.ts";
 
 const tmpRoot = join(import.meta.dir, ".tmp");
@@ -72,16 +72,68 @@ test("package manager helpers build install update exec and dlx commands", () =>
   expect(dlxToolCommand("pnpm", "vercel", ["deploy"])).toEqual(["pnpm", "dlx", "vercel", "deploy"]);
 });
 
-test("managed package scripts stay small and include safe and force sync", () => {
+test("managed package scripts include the default Bun-friendly command surface", () => {
   expect(managedScripts()).toEqual({
-    dev: "dispatch dev",
-    sync: "dispatch sync",
-    "sync-careful": "dispatch sync-careful",
-    portclean: "dispatch portclean",
-    "update-all": "dispatch update-all",
-    dp: "dispatch dp",
-    menu: "dispatch menu",
+    clean: "bun run dispatch/scripts/clean.ts",
+    sync: "bun run dispatch/scripts/sync.ts",
+    "sync-careful": "bun run dispatch/scripts/sync-careful.ts",
+    port: "bun run dispatch/scripts/port.ts",
+    portclean: "bun run dispatch/scripts/portclean.ts",
+    processes: "bun run dispatch/scripts/processes.ts",
+    update: "bun run dispatch/scripts/update.ts",
+    "update-all": "bun run dispatch/scripts/update-all.ts",
+    scripts: "bun run dispatch/scripts/scripts.ts",
+    ops: "bun run dispatch/scripts/ops.ts",
+    menu: "bun run dispatch/scripts/menu.ts",
   });
+});
+
+test("managed package script update writes Dispatch utility scripts by default", () => {
+  const packageJson = {
+    name: "target-repo",
+    scripts: {
+      dev: "vite dev",
+      sync: "bash scripts/sync-with-main.sh",
+      portclean: "bash scripts/portclean.sh",
+    },
+  };
+
+  const result = updateManagedPackageScripts(packageJson);
+
+  expect(packageJson.scripts.dev).toBe("vite dev");
+  expect(packageJson.scripts.sync).toBe("bun run dispatch/scripts/sync.ts");
+  expect(packageJson.scripts.portclean).toBe("bun run dispatch/scripts/portclean.ts");
+  expect(packageJson.scripts.check).toBeUndefined();
+  expect(packageJson.scripts.lint).toBeUndefined();
+  expect(packageJson.scripts.port).toBe("bun run dispatch/scripts/port.ts");
+  expect(packageJson.scripts["sync-careful"]).toBe("bun run dispatch/scripts/sync-careful.ts");
+  expect(packageJson.scripts["update-all"]).toBe("bun run dispatch/scripts/update-all.ts");
+  expect(result.changes).toContain("package.json scripts.sync");
+  expect(result.changes).toContain("package.json scripts.portclean");
+});
+
+test("managed package script update does not manage normal project dev script", () => {
+  const packageJson = {
+    name: "target-repo",
+    scripts: {
+      dev: "vite dev",
+      sync: "bash scripts/sync-with-main.sh",
+      portclean: "bash scripts/portclean.sh",
+    },
+  };
+
+  const result = updateManagedPackageScripts(packageJson, true);
+
+  expect(packageJson.scripts.dev).toBe("vite dev");
+  expect(packageJson.scripts.sync).toBe("bun run dispatch/scripts/sync.ts");
+  expect(packageJson.scripts.portclean).toBe("bun run dispatch/scripts/portclean.ts");
+  expect(result.changes).not.toContain("package.json scripts.dev");
+});
+
+test("managed script detection recognizes generated optional Dispatch script wrappers", () => {
+  expect(isManagedScript("bun run dispatch/scripts/convex.ts", "convex")).toBe(true);
+  expect(isManagedScript("bun run dispatch/scripts/convex-dev.ts", "convex:dev")).toBe(true);
+  expect(isManagedScript("bun run dispatch/scripts/convex-deploy.ts", "convex:deploy")).toBe(true);
 });
 
 test("parseDivergenceCounts reads git ahead behind counts", () => {
@@ -90,11 +142,26 @@ test("parseDivergenceCounts reads git ahead behind counts", () => {
   expect(parseDivergenceCounts("not counts")).toBeNull();
 });
 
-test("resolveLocalCommand supports Bun TypeScript command files", async () => {
+test("resolveLocalCommand supports visible Dispatch command files", async () => {
   const root = join(tmpRoot, "typescript-command");
+  const commandPath = join(root, "dispatch/commands/sync.ts");
+  await mkdir(join(root, "dispatch/commands"), { recursive: true });
+  await writeFile(join(root, "package.json"), JSON.stringify({ name: "typescript-command" }));
+  await writeFile(commandPath, "export default ['git', 'fetch', 'origin'];\n");
+
+  const resolved = await resolveLocalCommand(testContext(root), "sync", ["--dry-run"]);
+
+  expect(resolved).toEqual({
+    cmd: ["git", "fetch", "origin", "--dry-run"],
+    cwd: root,
+  });
+});
+
+test("resolveLocalCommand keeps legacy hidden Dispatch command files working", async () => {
+  const root = join(tmpRoot, "legacy-typescript-command");
   const commandPath = join(root, ".dispatch/commands/sync.ts");
   await mkdir(join(root, ".dispatch/commands"), { recursive: true });
-  await writeFile(join(root, "package.json"), JSON.stringify({ name: "typescript-command" }));
+  await writeFile(join(root, "package.json"), JSON.stringify({ name: "legacy-typescript-command" }));
   await writeFile(commandPath, "export default ['git', 'fetch', 'origin'];\n");
 
   const resolved = await resolveLocalCommand(testContext(root), "sync", ["--dry-run"]);
@@ -173,7 +240,49 @@ test("planAgentInstructionsUpdate creates AGENTS.md content for target repos", a
   expect(plan.conflict).toBeUndefined();
   expect(plan.content).toContain("<!-- dispatch:agents:start -->");
   expect(plan.content).toContain("dispatch check");
+  expect(plan.content).toContain("dispatch/agents/default.md");
   expect(plan.content).toContain("<!-- dispatch:agents:end -->");
+});
+
+test("planDispatchWorkspaceUpdate creates visible Dispatch workspace files", async () => {
+  const root = join(tmpRoot, "dispatch-workspace-create");
+  await mkdir(root, { recursive: true });
+
+  const plan = planDispatchWorkspaceUpdate(testContext(root));
+
+  expect(plan.conflicts).toEqual([]);
+  expect(plan.files.map((file) => file.path).sort()).toEqual([
+    "dispatch/README.md",
+    "dispatch/agents/README.md",
+    "dispatch/agents/bun-astro.md",
+    "dispatch/agents/bun-next.md",
+    "dispatch/agents/bun-svelte.md",
+    "dispatch/agents/default.md",
+    "dispatch/agents/quant.md",
+    "dispatch/commands/README.md",
+    "dispatch/scripts/README.md",
+    "dispatch/scripts/clean.ts",
+    "dispatch/scripts/convex-deploy.ts",
+    "dispatch/scripts/convex-dev.ts",
+    "dispatch/scripts/convex.ts",
+    "dispatch/scripts/menu.ts",
+    "dispatch/scripts/ops.ts",
+    "dispatch/scripts/port.ts",
+    "dispatch/scripts/portclean.ts",
+    "dispatch/scripts/processes.ts",
+    "dispatch/scripts/scripts.ts",
+    "dispatch/scripts/sync-careful.ts",
+    "dispatch/scripts/sync.ts",
+    "dispatch/scripts/update-all.ts",
+    "dispatch/scripts/update.ts",
+  ]);
+  expect(plan.files.find((file) => file.path === "dispatch/agents/default.md")?.content).toContain("dispatch/commands/<name>.ts");
+  expect(plan.files.find((file) => file.path === "dispatch/agents/bun-svelte.md")?.content).toContain("SvelteKit");
+  expect(plan.files.find((file) => file.path === "dispatch/agents/bun-next.md")?.content).toContain("Server Component");
+  expect(plan.files.find((file) => file.path === "dispatch/agents/bun-astro.md")?.content).toContain("Astro");
+  expect(plan.files.find((file) => file.path === "dispatch/agents/quant.md")?.content).toContain("lookahead bias");
+  expect(plan.files.find((file) => file.path === "dispatch/scripts/sync.ts")?.content).toContain('const command = "sync"');
+  expect(plan.files.find((file) => file.path === "dispatch/scripts/convex-dev.ts")?.content).toContain('const defaultArgs = ["dev"]');
 });
 
 test("isDispatchInitialized requires package dependency and managed workflow script", () => {

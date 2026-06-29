@@ -67,14 +67,15 @@ function coerceCommandResult(result: CommandResult, context: DispatchContext, ar
 function commandFileCandidates(context: DispatchContext, name: string): string[] {
   assertSafeCommandName(name);
 
-  const commandDir = context.config.commandDir ?? ".dispatch/commands";
+  const commandDir = context.config.commandDir ?? "dispatch/commands";
   const aliases = fileNameAliases(name);
-  const directories = [
+  const directories = unique([
     commandDir,
-    ".dispatch",
     "dispatch/commands",
     "dispatch",
-  ];
+    ".dispatch/commands",
+    ".dispatch",
+  ]);
 
   const candidates: string[] = [];
   for (const directory of directories) {
@@ -85,6 +86,10 @@ function commandFileCandidates(context: DispatchContext, name: string): string[]
     }
   }
   return candidates;
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values)];
 }
 
 function fileNameAliases(name: string): string[] {

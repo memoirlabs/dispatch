@@ -1,9 +1,13 @@
 {
-  "dev": "dispatch dev",
-  "sync": "dispatch sync",
-  "sync-careful": "dispatch sync-careful",
-  "portclean": "dispatch portclean",
-  "update-all": "dispatch update-all",
-  "dp": "dispatch dp",
-  "menu": "dispatch menu"
+  "clean": "bun run dispatch/scripts/clean.ts",
+  "sync": "bun run dispatch/scripts/sync.ts",
+  "sync-careful": "bun run dispatch/scripts/sync-careful.ts",
+  "port": "bun run dispatch/scripts/port.ts",
+  "portclean": "bun run dispatch/scripts/portclean.ts",
+  "processes": "bun run dispatch/scripts/processes.ts",
+  "update": "bun run dispatch/scripts/update.ts",
+  "update-all": "bun run dispatch/scripts/update-all.ts",
+  "scripts": "bun run dispatch/scripts/scripts.ts",
+  "ops": "bun run dispatch/scripts/ops.ts",
+  "menu": "bun run dispatch/scripts/menu.ts"
 }

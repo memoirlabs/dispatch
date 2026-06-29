@@ -143,18 +143,17 @@ Every repo should end up with this shape:
 ```json
 {
   "scripts": {
-    "ci": "repo-tools ci",
-    "check": "repo-tools check",
-    "lint": "repo-tools lint",
-    "lint:fix": "repo-tools lint --fix",
-    "typecheck": "repo-tools typecheck",
-    "test": "repo-tools test",
-    "test:watch": "repo-tools test --watch",
-    "test:coverage": "repo-tools test --coverage",
     "clean": "repo-tools clean",
-    "dev": "<repo-specific>",
-    "build": "<repo-specific>",
-    "start": "<repo-specific>"
+    "sync": "repo-tools sync",
+    "sync-careful": "repo-tools sync-careful",
+    "port": "repo-tools port",
+    "portclean": "repo-tools portclean",
+    "processes": "repo-tools processes",
+    "update": "repo-tools update",
+    "update-all": "repo-tools update-all",
+    "scripts": "repo-tools scripts",
+    "ops": "repo-tools ops",
+    "menu": "repo-tools menu"
   },
   "devDependencies": {
     "@your-scope/repo-tools": "^1.0.0"
@@ -165,15 +164,17 @@ Every repo should end up with this shape:
 Only these scripts are standardized by default:
 
 ```txt
-ci
-check
-lint
-lint:fix
-typecheck
-test
-test:watch
-test:coverage
 clean
+sync
+sync-careful
+port
+portclean
+processes
+update
+update-all
+scripts
+ops
+menu
 ```
 
 These remain repo-local when needed:
@@ -679,25 +680,27 @@ For each managed script:
 | Missing | Add it. |
 | Already equals the expected `repo-tools` command | Leave it. |
 | Starts with `repo-tools` but old command shape | Update it. |
-| Custom command exists | Do not overwrite unless `--force`. |
+| Custom command exists for a managed utility alias | Replace it with the expected `repo-tools` command. |
 
 Managed scripts:
 
 ```json
 {
-  "ci": "repo-tools ci",
-  "check": "repo-tools check",
-  "lint": "repo-tools lint",
-  "lint:fix": "repo-tools lint --fix",
-  "typecheck": "repo-tools typecheck",
-  "test": "repo-tools test",
-  "test:watch": "repo-tools test --watch",
-  "test:coverage": "repo-tools test --coverage",
-  "clean": "repo-tools clean"
+  "clean": "repo-tools clean",
+  "sync": "repo-tools sync",
+  "sync-careful": "repo-tools sync-careful",
+  "port": "repo-tools port",
+  "portclean": "repo-tools portclean",
+  "processes": "repo-tools processes",
+  "update": "repo-tools update",
+  "update-all": "repo-tools update-all",
+  "scripts": "repo-tools scripts",
+  "ops": "repo-tools ops",
+  "menu": "repo-tools menu"
 }
 ```
 
-Do not overwrite these:
+Do not add or overwrite lifecycle/product scripts that are not managed aliases:
 
 ```txt
 dev
@@ -709,29 +712,39 @@ deploy
 release
 ```
 
-### 8.3 Init conflict example
+### 8.3 Init script collision example
 
 If the repo has this:
 
 ```json
 {
   "scripts": {
-    "lint": "eslint ."
+    "dev": "vite dev",
+    "sync": "bash scripts/sync-with-main.sh",
+    "portclean": "bash scripts/portclean.sh"
   }
 }
 ```
 
-`repo-tools init` should print:
+`repo-tools init` should keep non-managed project scripts and write managed utility aliases:
 
 ```txt
-Conflict: package.json scripts.lint already exists.
-Current: eslint .
-Wanted:  repo-tools lint
-
-Run repo-tools init --force to replace it.
+repo-tools init updated:
+  package.json scripts.sync
+  package.json scripts.portclean
 ```
 
-This protects repo-specific behavior.
+The final `package.json` keeps repo-specific behavior:
+
+```json
+{
+  "scripts": {
+    "dev": "vite dev",
+    "sync": "repo-tools sync",
+    "portclean": "repo-tools portclean"
+  }
+}
+```
 
 ### 8.4 Idempotence requirement
 
@@ -1575,15 +1588,17 @@ Standard scripts checklist:
 
 ```json
 {
-  "ci": "repo-tools ci",
-  "check": "repo-tools check",
-  "lint": "repo-tools lint",
-  "lint:fix": "repo-tools lint --fix",
-  "typecheck": "repo-tools typecheck",
-  "test": "repo-tools test",
-  "test:watch": "repo-tools test --watch",
-  "test:coverage": "repo-tools test --coverage",
-  "clean": "repo-tools clean"
+  "clean": "repo-tools clean",
+  "sync": "repo-tools sync",
+  "sync-careful": "repo-tools sync-careful",
+  "port": "repo-tools port",
+  "portclean": "repo-tools portclean",
+  "processes": "repo-tools processes",
+  "update": "repo-tools update",
+  "update-all": "repo-tools update-all",
+  "scripts": "repo-tools scripts",
+  "ops": "repo-tools ops",
+  "menu": "repo-tools menu"
 }
 ```
 
@@ -1599,15 +1614,16 @@ Standard scripts checklist:
   "private": true,
   "packageManager": "pnpm@10.0.0",
   "scripts": {
-    "ci": "repo-tools ci",
-    "check": "repo-tools check",
-    "lint": "repo-tools lint",
-    "lint:fix": "repo-tools lint --fix",
-    "typecheck": "repo-tools typecheck",
-    "test": "repo-tools test",
-    "test:watch": "repo-tools test --watch",
-    "test:coverage": "repo-tools test --coverage",
     "clean": "repo-tools clean",
+    "sync": "repo-tools sync",
+    "sync-careful": "repo-tools sync-careful",
+    "port": "repo-tools port",
+    "portclean": "repo-tools portclean",
+    "processes": "repo-tools processes",
+    "update": "repo-tools update",
+    "update-all": "repo-tools update-all",
+    "scripts": "repo-tools scripts",
+    "ops": "repo-tools ops",
     "dev": "vite dev",
     "build": "vite build",
     "start": "vite preview"

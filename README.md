@@ -19,7 +19,8 @@ It can:
 
 It does not:
 
-- replace project-specific scripts unless `dispatch init --force` is used
+- add package scripts for normal quality commands like `lint`, `test`, or `check`
+- manage app runtime scripts like `dev`, `build`, or `start`
 - infer a deployment platform
 - hide destructive sync behavior behind a safe-sounding command
 - require every quality command to be added to `package.json`
@@ -39,6 +40,7 @@ Setup may update the target repo by:
 - adding `@memoir/dispatch` to `devDependencies`
 - adding the small managed script set to `package.json`
 - creating or patching `AGENTS.md`
+- writing the visible `dispatch/` workspace for agent options and project commands
 - writing `.oxlintrc.json`
 - writing `.github/workflows/ci.yml`
 - running the detected package manager install command
@@ -61,13 +63,13 @@ Refresh Dispatch-managed files later:
 dispatch init
 ```
 
-Force replacement of conflicting managed scripts:
+Force replacement of managed files such as the CI workflow and oxlint config:
 
 ```bash
 dispatch init --force
 ```
 
-Use `--force` carefully. It is appropriate after moving repo-specific behavior into `dispatch.config.ts` or `.dispatch/commands/*.ts`; it is not a safe way to blindly overwrite existing project scripts.
+Use `--force` carefully. It is not needed for the generated utility package scripts.
 
 ## Install Versus Init
 
@@ -87,22 +89,26 @@ or by invoking the package as a bootstrap command:
 bunx @memoir/dispatch
 ```
 
-After initialization, package scripts such as `bun dev` or `bun sync` call the `dispatch` binary from `node_modules/.bin`. The command implementation still comes from the installed package unless the repo overrides it with local config, local command files, or unmanaged package scripts.
+After initialization, package scripts such as `bun sync` and `bun portclean` run visible files in `dispatch/scripts/`. Those files delegate to the `dispatch` binary from `node_modules/.bin`.
 
 ## Generated Package Scripts
 
-`dispatch init` keeps `package.json` intentionally small. It manages only common human workflow aliases:
+`dispatch init` adds easy package-script aliases for common Dispatch workflows:
 
 ```json
 {
   "scripts": {
-    "dev": "dispatch dev",
-    "sync": "dispatch sync",
-    "sync-careful": "dispatch sync-careful",
-    "portclean": "dispatch portclean",
-    "update-all": "dispatch update-all",
-    "dp": "dispatch dp",
-    "menu": "dispatch menu"
+    "clean": "bun run dispatch/scripts/clean.ts",
+    "sync": "bun run dispatch/scripts/sync.ts",
+    "sync-careful": "bun run dispatch/scripts/sync-careful.ts",
+    "port": "bun run dispatch/scripts/port.ts",
+    "portclean": "bun run dispatch/scripts/portclean.ts",
+    "processes": "bun run dispatch/scripts/processes.ts",
+    "update": "bun run dispatch/scripts/update.ts",
+    "update-all": "bun run dispatch/scripts/update-all.ts",
+    "scripts": "bun run dispatch/scripts/scripts.ts",
+    "ops": "bun run dispatch/scripts/ops.ts",
+    "menu": "bun run dispatch/scripts/menu.ts"
   }
 }
 ```
@@ -110,15 +116,22 @@ After initialization, package scripts such as `bun dev` or `bun sync` call the `
 People can then use normal package-manager commands:
 
 ```bash
-bun dev
+bun clean
 bun sync
 bun sync-careful
+bun port
 bun portclean
 bun update-all
-bun dp
 ```
 
-Quality commands stay available through `dispatch` without adding more package-script noise:
+`dispatch init` intentionally writes those utility script names. It does not generate normal project quality scripts such as `lint`, `test`, or `check`, and it does not replace `dev`.
+
+```bash
+bun sync
+bun portclean
+```
+
+The same quality commands are always available through the binary too:
 
 ```bash
 dispatch lint
@@ -133,20 +146,20 @@ If the repo appears to use Convex, `dispatch init` also adds:
 ```json
 {
   "scripts": {
-    "convex": "dispatch convex",
-    "convex:dev": "dispatch convex dev",
-    "convex:deploy": "dispatch convex deploy"
+    "convex": "bun run dispatch/scripts/convex.ts",
+    "convex:dev": "bun run dispatch/scripts/convex-dev.ts",
+    "convex:deploy": "bun run dispatch/scripts/convex-deploy.ts"
   }
 }
 ```
 
 ## Agent Instructions
 
-`dispatch init` creates or updates the consuming repo's root `AGENTS.md`.
+`dispatch init` creates or updates the consuming repo's root `AGENTS.md` and writes the Dispatch agent option at `dispatch/agents/default.md`.
 
 The important behavior is that the target codebase gets instructions when it runs setup. The package having its own `AGENTS.md` is not enough.
 
-Dispatch writes only this managed block:
+The root `AGENTS.md` gets only this managed block:
 
 ```md
 <!-- dispatch:agents:start -->
@@ -155,6 +168,8 @@ Dispatch writes only this managed block:
 ```
 
 User-authored content outside the block is preserved. On later runs, Dispatch replaces only the managed block.
+
+The managed block points agents at the visible `dispatch/` folder, where Dispatch-owned scripts, command guidance, and agent options live. Generated agent profiles include `default.md`, `bun-svelte.md`, `bun-next.md`, `bun-astro.md`, and `quant.md`.
 
 If `AGENTS.md` contains only one marker, or markers are in the wrong order, setup refuses to continue. That prevents Dispatch from guessing and overwriting user content.
 
@@ -206,14 +221,15 @@ Use `commands` when you want to fully override a Dispatch command with an argv a
 Project command files live at:
 
 ```txt
-.dispatch/commands/<name>.ts
+dispatch/commands/<name>.ts
 ```
 
 Example:
 
 ```txt
-package.json                  "sync": "dispatch sync"
-.dispatch/commands/sync.ts    repo-specific implementation
+package.json                  "sync": "bun run dispatch/scripts/sync.ts"
+dispatch/scripts/sync.ts      generated package-script entrypoint
+dispatch/commands/sync-db.ts  repo-specific dispatch sync-db implementation
 ```
 
 A command file can export an argv array:
@@ -380,7 +396,8 @@ Dispatch tries to be boring and predictable:
 
 - user-authored `AGENTS.md` content is preserved outside Dispatch markers
 - partial marker state is treated as a conflict
-- existing package scripts are preserved unless they are already managed by Dispatch or `--force` is used
+- `init` writes the managed utility package scripts directly
+- `init` does not generate package scripts for `lint`, `test`, `check`, `dev`, `build`, or `start`
 - deploy has no platform fallback
 - `sync` is labeled as destructive and supports `--dry-run`
 - `sync-careful` exists for the common safe update case
